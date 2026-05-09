@@ -64,15 +64,19 @@ with col2:
                 requests.post(upload_url, data=uploaded_file.getvalue(), headers=headers)
                 image_public_url = f"{SUPABASE_URL}/storage/v1/object/public/photos/{file_name}"
 
-                # 2. FAL.AI FOOOCUS MODELİNİ ÇALIŞTIR (ÜRÜN KORUMA MODU)
+                # 2. FAL.AI FOOOCUS MODELİNİ ÇALIŞTIR
                 handler = fal_client.submit(
                     "fal-ai/fooocus/image-prompt",
                     arguments={
                         "prompt": f"Professional product photography, {user_prompt}, highly detailed, 8k",
-                        "image_url": image_public_url,
-                        "input_image_url": image_public_url,
+                        "image_prompts": [
+                            {
+                                "image_url": image_public_url,
+                                "unmasked_image_url": image_public_url,
+                                "image_prompt_model": "face_swap"
+                            }
+                        ],
                         "image_prompt_strength": koruma_seviyesi,
-                        "image_prompt_model": "face_swap", # Ürün hatlarını donduran mod
                         "negative_prompt": "mutated, deformed, blurry, low quality, distorted, missing parts, unrecognizable product, messy",
                         "guidance_scale": 4
                     }
