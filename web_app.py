@@ -56,24 +56,18 @@ with col2:
                 requests.post(upload_url, data=uploaded_file.getvalue(), headers=headers)
                 image_public_url = f"{SUPABASE_URL}/storage/v1/object/public/photos/{file_name}"
 
-                # 2. FAL.AI FOOOCUS (KESİN ÇÖZÜM PARAMETRELERİ)
+                # 2. FAL.AI FOOOCUS (KESİN PARAMETRE GÜNCELLEMESİ)
                 handler = fal_client.submit(
                     "fal-ai/fooocus/image-prompt",
                     arguments={
                         "prompt": f"Professional product photography, {user_prompt}, highly detailed, 8k",
-                        "image_prompts": [
-                            {
-                                "image_url": image_public_url,
-                                "image_prompt_model": "face_swap"
-                            }
-                        ],
+                        "image_prompt_1": image_public_url,
+                        "image_prompt_model_1": "face_swap",
                         "image_prompt_strength": koruma_seviyesi,
                         "negative_prompt": "mutated, deformed, blurry, low quality, distorted, missing parts, unrecognizable product",
                         "guidance_scale": 4
                     }
                 )
-                
-                result = handler.get()
                 
                 if result and 'images' in result:
                     resim_url = result['images'][0]['url']
