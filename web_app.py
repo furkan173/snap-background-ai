@@ -7,14 +7,13 @@ import os
 # --- AYARLAR ---
 st.set_page_config(page_title="SnapBackground AI v2.0", layout="wide")
 
-# FAL_KEY Konfigürasyonu
 FAL_KEY = "6b6185ff-1f55-41a4-983e-c52708afe67e:3b1962c534d970270346435115182232"
 os.environ["FAL_KEY"] = FAL_KEY
 
 SUPABASE_URL = "https://ndfavrrmyrmtdixzpome.supabase.co"
 SUPABASE_KEY = "sb_secret_s4P2_-OJol1tGBcXi71IZA_vIp3oTpO"
 
-# --- SIDEBAR (TASARIM AYARLARI) ---
+# --- SIDEBAR ---
 with st.sidebar:
     st.title("⚙️ Tasarım Ayarları")
     sablon = st.selectbox(
@@ -29,8 +28,7 @@ with st.sidebar:
         "Stüdyo Karanlık Mod": "dark studio background, dramatic rim lighting, cinematic shadows"
     }
     
-    # Fooocus modelinde 'image_prompt_strength' ürünün korunma seviyesini belirler
-    koruma_seviyesi = st.slider("Ürün Koruma Oranı (Yüksek = Daha Az Değişim)", 0.5, 1.0, 0.75)
+    koruma_seviyesi = st.slider("Ürün Koruma Oranı (Yüksek = Daha Az Değişim)", 0.5, 1.0, 0.85)
 
 # --- ANA EKRAN ---
 st.title("📸 SnapBackground AI - Profesyonel Reklam Stüdyosu")
@@ -51,20 +49,14 @@ with col2:
     if uploaded_file and st.button("Sihri Başlat 🚀"):
         with st.spinner('Yapay zeka ürününüzü işliyor...'):
             try:
-                # 1. SUPABASE ÜZERİNE GEÇİCİ YÜKLEME
+                # 1. SUPABASE YÜKLEME
                 file_name = f"{int(time.time())}_{uploaded_file.name}"
                 upload_url = f"{SUPABASE_URL}/storage/v1/object/photos/{file_name}"
-                headers = {
-                    "Authorization": f"Bearer {SUPABASE_KEY}", 
-                    "apikey": SUPABASE_KEY, 
-                    "Content-Type": uploaded_file.type
-                }
-                
-                # Dosyayı buluta yükle
+                headers = {"Authorization": f"Bearer {SUPABASE_KEY}", "apikey": SUPABASE_KEY, "Content-Type": uploaded_file.type}
                 requests.post(upload_url, data=uploaded_file.getvalue(), headers=headers)
                 image_public_url = f"{SUPABASE_URL}/storage/v1/object/public/photos/{file_name}"
 
-                # 2. FAL.AI FOOOCUS MODELİNİ ÇALIŞTIR
+                # 2. FAL.AI FOOOCUS (KESİN ÇÖZÜM PARAMETRELERİ)
                 handler = fal_client.submit(
                     "fal-ai/fooocus/image-prompt",
                     arguments={
@@ -72,12 +64,11 @@ with col2:
                         "image_prompts": [
                             {
                                 "image_url": image_public_url,
-                                "unmasked_image_url": image_public_url,
                                 "image_prompt_model": "face_swap"
                             }
                         ],
                         "image_prompt_strength": koruma_seviyesi,
-                        "negative_prompt": "mutated, deformed, blurry, low quality, distorted, missing parts, unrecognizable product, messy",
+                        "negative_prompt": "mutated, deformed, blurry, low quality, distorted, missing parts, unrecognizable product",
                         "guidance_scale": 4
                     }
                 )
@@ -87,13 +78,9 @@ with col2:
                 if result and 'images' in result:
                     resim_url = result['images'][0]['url']
                     st.image(resim_url, use_container_width=True)
-                    
-                    # İndirme Butonu
                     response = requests.get(resim_url)
-                    st.download_button("📷 Fotoğrafı İndir", data=response.content, file_name="snap_background_result.png")
+                    st.download_button("📷 Fotoğrafı İndir", data=response.content, file_name="snap_result.png")
                     st.balloons()
-                else:
-                    st.warning("Yapay zeka bir sonuç döndüremedi. Lütfen tekrar deneyin.")
 
             except Exception as e:
                 st.error(f"Hata oluştu: {e}")
