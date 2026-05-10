@@ -67,17 +67,18 @@ with c1:
                 requests.post(f"{SUPABASE_URL}/storage/v1/object/photos/{f_n}", data=up.getvalue(), headers=h_u)
                 img_url = f"{SUPABASE_URL}/storage/v1/object/public/photos/{f_n}"
 
-                # 2. ADIM: Arka Plan Silme (Model ismini 'image-to-image' içinde hallediyoruz)
-                status.text("2/3: Ürün donduruluyor...")
+                # 2. ADIM: AI İşleme (Stable Diffusion v3 - Ticari Ayar)
+                status.text("2/3: Profesyonel stüdyo ortamı oluşturuluyor...")
                 
-                # Arka planı silmek yerine doğrudan Flux'un dondurma özelliğini kullanıyoruz
-                # Bu sayede "isnet" veya "remove-bg" gibi harici modellere olan bağımlılığı bitiriyoruz
-                final_res = fal_client.subscribe("fal-ai/flux/dev/image-to-image", arguments={
+                # Bu sefer, arka planın değişmesi için gücü artırıyoruz
+                # Ama modeli komutlara daha sıkı bağlayarak ürünü tanımaya zorluyoruz
+                final_res = fal_client.subscribe("fal-ai/stable-diffusion-v3-medium/image-to-image", arguments={
                     "image_url": img_url,
-                    "prompt": f"Product advertising photography, the original item in the photo placed on {bg_desc}, high quality, cinematic, realistic shadows",
-                    "strength": 0.45, # Ürünü bozmamak için kritik değer
-                    "guidance_scale": 12.0,
-                    "num_inference_steps": 30
+                    # Prompt'u güçlendirdik, arka planın değişmesini zorunlu kıldık
+                    "prompt": f"Professional product shot of the original item placed on {bg_desc}, extremely detailed, realistic textures, cinematic lighting, masterpiece",
+                    "strength": 0.65, # ÖNCEKİ: 0.45: Arka planı değiştirme gücünü artırdık
+                    "guidance_scale": 12.0, # Komuta daha sıkı tutunmasını sağladık
+                    "num_inference_steps": 35 # Daha detaylı işleme
                 })
 
                 if final_res and 'images' in final_res:
