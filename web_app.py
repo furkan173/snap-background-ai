@@ -46,13 +46,17 @@ with col1:
 
 with col2:
     st.subheader("✨ AI Çıktısı")
-   if uploaded_file and st.button("Sihri Başlat 🚀"):
+    if uploaded_file and st.button("Sihri Başlat 🚀"):
         with st.spinner('Yapay zeka ürününüzü işliyor...'):
             try:
                 # 1. SUPABASE ÜZERİNE GEÇİCİ YÜKLEME
                 file_name = f"{int(time.time())}_{uploaded_file.name}"
                 upload_url = f"{SUPABASE_URL}/storage/v1/object/photos/{file_name}"
-                headers = {"Authorization": f"Bearer {SUPABASE_KEY}", "apikey": SUPABASE_KEY, "Content-Type": uploaded_file.type}
+                headers = {
+                    "Authorization": f"Bearer {SUPABASE_KEY}", 
+                    "apikey": SUPABASE_KEY, 
+                    "Content-Type": uploaded_file.type
+                }
                 
                 requests.post(upload_url, data=uploaded_file.getvalue(), headers=headers)
                 image_public_url = f"{SUPABASE_URL}/storage/v1/object/public/photos/{file_name}"
@@ -70,7 +74,7 @@ with col2:
                     }
                 )
                 
-                # --- İŞTE EKSİK OLAN VE HATAYA SEBEP OLAN SATIR BURASI ---
+                # Sonucu Yapay Zekadan Al
                 result = handler.get() 
                 
                 if result and 'images' in result:
