@@ -1,3 +1,4 @@
 streamlit
 fal-client
 supabase
+streamlit-supabase-auth
