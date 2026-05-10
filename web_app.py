@@ -91,6 +91,7 @@ with col1:
                     }
                 )
                 result = handler.get()
+                result = handler.get()
 
                 result = handler.get() # Sonuç gelene kadar burada bekler
                 progress_bar.progress(66)
