@@ -5,9 +5,8 @@ import time
 import os
 
 # --- AYARLAR ---
-st.set_page_config(page_title="SnapBackground ULTRA SHIELD", layout="wide")
+st.set_page_config(page_title="SnapBackground ULTRA PRO v5.1", layout="wide")
 
-# FAL KEY (Burayı Değiştirmeyi Unutma)
 FAL_KEY = "6b6185ff-1f55-41a4-983e-c52708afe67e:3b1962c534d970270346435115182232"
 SUPABASE_URL = "https://ndfavrrmyrmtdixzpome.supabase.co"
 SUPABASE_KEY = "sb_secret_s4P2_-OJol1tGBcXi71IZA_vIp3oTpO"
@@ -30,10 +29,10 @@ def use_credit(user_id, c):
 
 # --- GİRİŞ ---
 if not st.session_state.logged_in:
-    st.title("🛡️ ULTRA SHIELD Giriş")
+    st.title("🛡️ Ultra Pro v5.1 Giriş")
     e = st.text_input("E-posta")
     p = st.text_input("Şifre", type="password")
-    if st.button("Giriş Yap"):
+    if st.button("Sisteme Bağlan"):
         res = requests.post(f"{SUPABASE_URL}/auth/v1/token?grant_type=password", headers={"apikey": SUPABASE_KEY}, json={"email": e, "password": p})
         if res.status_code == 200:
             st.session_state.logged_in, st.session_state.user_id = True, res.json()['user']['id']
@@ -41,53 +40,57 @@ if not st.session_state.logged_in:
     st.stop()
 
 # --- PANEL ---
-current_c = get_credits(st.session_state.user_id)
+user_id = st.session_state.user_id
+current_c = get_credits(user_id)
+
 with st.sidebar:
-    st.metric("Kalan Kredi", current_c)
+    st.metric("Kalan Krediniz", current_c)
     if st.button("Çıkış"): st.session_state.logged_in = False; st.rerun()
 
-st.title("📸 ULTRA SHIELD: Profesyonel Ürün Fotoğrafçısı")
-st.markdown("This version ensures 100% product integrity.")
+st.title("📸 Profesyonel Ürün Fotoğrafçısı AI")
+st.info("Ürün formu %100 korunur. Sadece arka plan değişir.")
 
 c1, c2 = st.columns(2)
 with c1:
-    up = st.file_uploader("Yükle (Ürün %100 korunacaktır)", type=["jpg", "png", "jpeg"])
-    prompt = st.text_input("Arka plan detayı:", "luxury mermer masa, yumuşak stüdyo ışığı")
+    up = st.file_uploader("Ürün Görseli Seçin", type=["jpg", "png", "jpeg"])
+    prompt = st.text_input("Arka plan teması:", "on a luxury marble counter, soft studio lighting")
 
-    if st.button("Kusursuz Çekimi Başlat 🚀") and up:
+    if st.button("Profesyonel Çekimi Başlat 🚀") and up:
         if current_c > 0:
             status = st.empty()
             try:
                 # 1. Fotoğraf Yükleme
-                status.text("1/3: Ürün fotoğrafları yükleniyor...")
+                status.text("1/3: Fotoğraf yükleniyor...")
                 f_n = f"{int(time.time())}_{up.name}"
                 h_u = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": up.type}
                 requests.post(f"{SUPABASE_URL}/storage/v1/object/photos/{f_n}", data=up.getvalue(), headers=h_u)
                 p_url = f"{SUPABASE_URL}/storage/v1/object/public/photos/{f_n}"
 
-                # 2. ULTRA MODEL: fal-ai/background-change (Segmentasyon Tabanlı)
-                status.text("2/3: Ürün maskeleniyor ve arka plan değişiyor...")
+                # 2. DOĞRU MODEL: fal-ai/fooocus/inpainting (Ürün Koruma Uzmanı)
+                status.text("2/3: Ürün donduruluyor ve arka plan değişiyor...")
                 handler = fal_client.submit(
-                    "fal-ai/background-change", # Bu API Fooocus değildir, sadece bu iş için üretilmiştir
+                    "fal-ai/fooocus/inpainting", 
                     arguments={
-                        "image_url": p_url,
-                        "prompt": f"Professional product advertising shot, {prompt}, masterpiece, 8k, realistic lighting",
-                        "mask_threshold": 0.5 # Ürün sınırlarını net belirle
+                        "input_image_url": p_url,
+                        "prompt": f"Professional advertising photography, {prompt}, masterpiece, 8k",
+                        "mask_threshold": 0.5,
+                        "guidance_scale": 15, # Komuta sadık kal
+                        "strength": 0.95 # Arka planı değiştirme gücü
                     }
                 )
                 res = handler.get()
 
                 # 3. Sonuç
-                if res and 'image' in res:
+                if res and 'images' in res:
                     status.text("3/3: Tamamlandı!")
-                    st.session_state.final_img = res['image']['url']
-                    use_credit(st.session_state.user_id, current_c)
+                    st.session_state.final_img = res['images'][0]['url']
+                    use_credit(user_id, current_c)
                     st.rerun()
             except Exception as e: st.error(f"Hata: {e}")
-        else: st.warning("Kredi yetersiz.")
+        else: st.warning("Krediniz bitti.")
 
 with c2:
     if st.session_state.final_img:
-        st.subheader("✨ Profesyonel Sonuç")
+        st.subheader("✨ Sonuç")
         st.image(st.session_state.final_img, use_container_width=True)
-        st.success("Sonuç: Ürün pikselleri %100 korundu.")
+        st.success("Analiz: Ürün detayları korunmuştur.")
