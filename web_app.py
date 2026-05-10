@@ -80,15 +80,16 @@ with col1:
                 progress_bar.progress(33)
 
                 # 2. Aşama: AI İşleme (Queue Modu)
-                status_text.text("2/3: Yapay zeka arka planı tasarlıyor (Lütfen bekleyin)...")
-                handler = fal_client.submit(
-                    "fal-ai/fooocus/image-prompt",
-                    arguments={
-                        "prompt": f"Professional product photography, {user_prompt}, 8k",
-                        "image_prompt_1": {"image_url": p_url},
-                        "image_prompt_model_1": "face_swap"
-                    }
-                )
+                 handler = fal_client.submit(
+                "fal-ai/fooocus/image-prompt",
+    arguments={
+        "prompt": f"Professional advertising photography, {user_prompt}, clean background, 8k, highly detailed",
+        "image_prompt_1": {"image_url": p_url},
+        "image_prompt_model_1": "image_prompt", # 'face_swap' yerine bunu kullanırsak formu daha iyi korur
+        "image_prompt_strength": 0.95, # Bu değeri 0.85'ten 0.95'e çektik (Ürünü %95 koru demek)
+    }
+)
+
                 result = handler.get() # Sonuç gelene kadar burada bekler
                 progress_bar.progress(66)
 
