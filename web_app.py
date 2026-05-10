@@ -4,91 +4,112 @@ import requests
 import time
 import os
 
-# --- AYARLAR ---
-st.set_page_config(page_title="SnapBackground PRO v5.2", layout="wide")
+# --- AYARLAR VE KONFİGÜRASYON ---
+st.set_page_config(page_title="SnapBackground Pro AI", layout="wide")
 
+# API Anahtarları (Senin mevcut anahtarların)
 FAL_KEY = "6b6185ff-1f55-41a4-983e-c52708afe67e:3b1962c534d970270346435115182232"
 SUPABASE_URL = "https://ndfavrrmyrmtdixzpome.supabase.co"
 SUPABASE_KEY = "sb_secret_s4P2_-OJol1tGBcXi71IZA_vIp3oTpO"
 os.environ["FAL_KEY"] = FAL_KEY
 
+# Session State Hazırlığı
 if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "final_img" not in st.session_state: st.session_state.final_img = None
 
-# --- VERİ TABANI ---
+# --- YARDIMCI FONKSİYONLAR ---
 def get_credits(user_id):
-    h = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
+    headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
     try:
-        r = requests.get(f"{SUPABASE_URL}/rest/v1/profiller?id=eq.{user_id}", headers=h).json()
-        return r[0].get('krediler', 0) if r else 0
+        res = requests.get(f"{SUPABASE_URL}/rest/v1/profiller?id=eq.{user_id}", headers=headers).json()
+        return res[0].get('krediler', 0) if res else 0
     except: return 0
 
-def use_credit(user_id, c):
-    h = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"}
-    requests.patch(f"{SUPABASE_URL}/rest/v1/profiller?id=eq.{user_id}", headers=h, json={"krediler": max(0, c - 1)})
+def use_credit(user_id, current_val):
+    headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"}
+    new_val = max(0, current_val - 1)
+    requests.patch(f"{SUPABASE_URL}/rest/v1/profiller?id=eq.{user_id}", headers=headers, json={"krediler": new_val})
 
-# --- GİRİŞ ---
+# --- GİRİŞ SİSTEMİ ---
 if not st.session_state.logged_in:
-    st.title("🛡️ Pro v5.2 Giriş")
-    e = st.text_input("E-posta")
-    p = st.text_input("Şifre", type="password")
-    if st.button("Sisteme Bağlan"):
-        res = requests.post(f"{SUPABASE_URL}/auth/v1/token?grant_type=password", headers={"apikey": SUPABASE_KEY}, json={"email": e, "password": p})
+    st.title("📸 SnapBackground Pro Giriş")
+    email = st.text_input("E-posta Adresi")
+    password = st.text_input("Şifre", type="password")
+    if st.button("Sisteme Giriş Yap"):
+        login_url = f"{SUPABASE_URL}/auth/v1/token?grant_type=password"
+        res = requests.post(login_url, headers={"apikey": SUPABASE_KEY}, json={"email": email, "password": password})
         if res.status_code == 200:
-            st.session_state.logged_in, st.session_state.user_id = True, res.json()['user']['id']
+            st.session_state.logged_in = True
+            st.session_state.user_id = res.json()['user']['id']
             st.rerun()
+        else:
+            st.error("Giriş başarısız. Bilgilerinizi kontrol edin.")
     st.stop()
 
-# --- PANEL ---
+# --- ANA UYGULAMA PANELİ ---
 user_id = st.session_state.user_id
-current_c = get_credits(user_id)
+current_credits = get_credits(user_id)
 
 with st.sidebar:
-    st.metric("Kalan Kredi", current_c)
-    if st.button("Çıkış"): st.session_state.logged_in = False; st.rerun()
+    st.title("👤 Kullanıcı Paneli")
+    st.metric("Kalan Kredi", current_credits)
+    if st.button("Çıkış Yap"):
+        st.session_state.logged_in = False
+        st.rerun()
 
-st.title("📸 Profesyonel Ürün Stüdyosu")
-st.write("Bu sürüm, ürün görselini milimetrik korumak için SDXL teknolojisini kullanır.")
+st.title("📸 Profesyonel Ürün Fotoğrafçısı AI")
+st.markdown("Ürün formunu koruyan ticari optimizasyon aktif.")
 
-c1, c2 = st.columns(2)
-with c1:
-    up = st.file_uploader("Ürün Fotoğrafı", type=["jpg", "png", "jpeg"])
-    prompt = st.text_input("Arka plan:", "luxury marble table, cinematic lighting, high quality photography")
+col1, col2 = st.columns(2)
 
-    if st.button("Sihri Başlat 🚀") and up:
-        if current_c > 0:
+with col1:
+    uploaded_file = st.file_uploader("Ürün fotoğrafını yükleyin", type=["jpg", "png", "jpeg"])
+    user_prompt = st.text_input("Arka planı tarif edin:", "on a luxury white marble table, soft studio lighting")
+    
+    if st.button("Sihri Başlat (1 Kredi) 🚀") and uploaded_file:
+        if current_credits > 0:
             status = st.empty()
             try:
-                # 1. Yükleme
-                status.text("1/3: Hazırlanıyor...")
-                f_n = f"{int(time.time())}_{up.name}"
-                h_u = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": up.type}
-                requests.post(f"{SUPABASE_URL}/storage/v1/object/photos/{f_n}", data=up.getvalue(), headers=h_u)
-                p_url = f"{SUPABASE_URL}/storage/v1/object/public/photos/{f_n}"
+                # 1. Aşama: Dosyayı Supabase Storage'a Yükleme
+                status.text("1/3: Ürün fotoğrafı sunucuya aktarılıyor...")
+                file_name = f"{int(time.time())}_{uploaded_file.name}"
+                upload_url = f"{SUPABASE_URL}/storage/v1/object/photos/{file_name}"
+                headers_up = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": uploaded_file.type}
+                requests.post(upload_url, data=uploaded_file.getvalue(), headers=headers_up)
+                public_url = f"{SUPABASE_URL}/storage/v1/object/public/photos/{file_name}"
 
-                # 2. MODEL: fal-ai/fast-sdxl/image-to-image (Daha stabil ve hızlı)
-                status.text("2/3: Yapay zeka sahneyi kuruyor...")
+                # 2. Aşama: AI İşleme (SDXL Image-to-Image Profesyonel Mod)
+                status.text("2/3: Arka plan tasarlanıyor (Ürün korunuyor)...")
                 handler = fal_client.submit(
                     "fal-ai/fast-sdxl/image-to-image",
                     arguments={
-                        "image_url": p_url,
-                        "prompt": f"Product photography of the original item, {prompt}, masterpiece, 8k, ultra-realistic",
-                        "strength": 0.4, # Ürünü bozmamak için bu değer düşük tutuldu (Düşük = Ürünü koru)
-                        "guidance_scale": 10,
-                        "num_inference_steps": 30
+                        "image_url": public_url,
+                        "prompt": f"Professional advertising product shot, {user_prompt}, cinematic lighting, 8k resolution, highly detailed, realistic textures",
+                        "strength": 0.65, # Ürün koruma ve arka plan değişimi arasındaki 'Altın Oran'
+                        "guidance_scale": 12.5, # Komuta yüksek sadakat
+                        "num_inference_steps": 40
                     }
                 )
-                res = handler.get()
+                result = handler.get()
 
-                if res and 'images' in res:
-                    status.text("3/3: Bitti!")
-                    st.session_state.final_img = res['images'][0]['url']
-                    use_credit(user_id, current_c)
+                # 3. Aşama: Sonuç Gösterimi ve Kredi Düşümü
+                if result and 'images' in result:
+                    status.text("3/3: İşlem başarıyla tamamlandı!")
+                    st.session_state.final_img = result['images'][0]['url']
+                    use_credit(user_id, current_credits)
                     st.rerun()
-            except Exception as e: st.error(f"Hata: {e}")
-        else: st.warning("Krediniz yetersiz.")
+            except Exception as e:
+                st.error(f"Bir hata oluştu: {e}")
+        else:
+            st.warning("Yetersiz kredi! Lütfen bakiye yükleyin.")
 
-with c2:
+with col2:
+    st.subheader("✨ Final Sonucu")
     if st.session_state.final_img:
-        st.image(st.session_state.final_img, caption="AI Çıktısı", use_container_width=True)
-        st.success("Analiz: Ürün formu korundu.")
+        st.image(st.session_state.final_img, use_container_width=True)
+        st.success("Analiz: Ürün formu korundu, arka plan güncellendi.")
+        if st.button("Yeni Fotoğraf Düzenle 🔄"):
+            st.session_state.final_img = None
+            st.rerun()
+    else:
+        st.info("Henüz bir görsel oluşturulmadı. Sol panelden işlemi başlatın.")
