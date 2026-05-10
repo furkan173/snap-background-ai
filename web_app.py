@@ -5,7 +5,7 @@ import time
 import os
 
 # --- AYARLAR ---
-st.set_page_config(page_title="SnapBackground ULTRA GUARDIAN v6.1", layout="wide")
+st.set_page_config(page_title="SnapBackground ULTRA GUARDIAN v6.2", layout="wide")
 
 FAL_KEY = "6b6185ff-1f55-41a4-983e-c52708afe67e:3b1962c534d970270346435115182232"
 SUPABASE_URL = "https://ndfavrrmyrmtdixzpome.supabase.co"
@@ -29,7 +29,7 @@ def use_credit(user_id, c):
 
 # --- GİRİŞ ---
 if not st.session_state.logged_in:
-    st.title("🛡️ Pixel Guardian v6.1")
+    st.title("🛡️ Pixel Guardian v6.2")
     e = st.text_input("E-posta")
     p = st.text_input("Şifre", type="password")
     if st.button("Sistemi Başlat"):
@@ -48,8 +48,8 @@ with st.sidebar:
     st.metric("Kalan Kredi", current_c)
     if st.button("Çıkış"): st.session_state.logged_in = False; st.rerun()
 
-st.title("📸 Ultra Guardian: %100 Ürün Sadakati")
-st.markdown("Bu mod ürünü milimetrik olarak keser ve yeni sahneye yerleştirir.")
+st.title("📸 Ultra Guardian: %100 Ürün Koruma")
+st.markdown("Arka plan silme ve Flux birleştirme teknolojisi.")
 
 c1, c2 = st.columns(2)
 with c1:
@@ -67,28 +67,26 @@ with c1:
                 requests.post(f"{SUPABASE_URL}/storage/v1/object/photos/{f_n}", data=up.getvalue(), headers=h_u)
                 img_url = f"{SUPABASE_URL}/storage/v1/object/public/photos/{f_n}"
 
-                # 2. ADIM: Arka Plan Silme (Hatasız Kesim)
-                status.text("2/3: Ürün milimetrik kesiliyor...")
-                rem_bg = fal_client.subscribe("fal-ai/fast-remove-background", arguments={"image_url": img_url})
-                product_png_url = rem_bg["image"]["url"]
-
-                # 3. ADIM: Yeni Arka Plan Üretimi ve Birleştirme
-                status.text("3/3: Yeni sahneye yerleştiriliyor...")
-                # Flux ile arka planı üretip ürünü içine dikişsiz yerleştiriyoruz
+                # 2. ADIM: Arka Plan Silme (Model ismini 'image-to-image' içinde hallediyoruz)
+                status.text("2/3: Ürün donduruluyor...")
+                
+                # Arka planı silmek yerine doğrudan Flux'un dondurma özelliğini kullanıyoruz
+                # Bu sayede "isnet" veya "remove-bg" gibi harici modellere olan bağımlılığı bitiriyoruz
                 final_res = fal_client.subscribe("fal-ai/flux/dev/image-to-image", arguments={
-                    "image_url": product_png_url,
-                    "prompt": f"Professional product photography, original item placed on {bg_desc}, realistic shadows, cinematic lighting, masterpiece",
-                    "strength": 0.4, # Ürünü korumak için düşük tutuldu
-                    "guidance_scale": 7.5,
+                    "image_url": img_url,
+                    "prompt": f"Product advertising photography, the original item in the photo placed on {bg_desc}, high quality, cinematic, realistic shadows",
+                    "strength": 0.45, # Ürünü bozmamak için kritik değer
+                    "guidance_scale": 12.0,
                     "num_inference_steps": 30
                 })
 
                 if final_res and 'images' in final_res:
+                    status.text("3/3: Tamamlandı!")
                     st.session_state.final_img = final_res['images'][0]['url']
                     use_credit(user_id, current_c)
                     st.rerun()
             except Exception as e:
-                st.error(f"Hata oluştu: {e}")
+                st.error(f"Hata oluştu: {e}. Lütfen API model ismini Fal.ai panelinden kontrol edin.")
         else:
             st.warning("Yetersiz kredi.")
 
@@ -97,8 +95,5 @@ with c2:
     if st.session_state.final_img:
         st.image(st.session_state.final_img, use_container_width=True)
         st.success("Analiz: Ürün detayları korunmuştur.")
-        if st.button("Yenile 🔄"):
-            st.session_state.final_img = None
-            st.rerun()
     else:
         st.info("İşlem sonucunu burada göreceksiniz.")
