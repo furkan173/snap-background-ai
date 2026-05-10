@@ -46,17 +46,18 @@ with col1:
 
 with col2:
     st.subheader("✨ AI Çıktısı")
-    if uploaded_file and st.button("Sihri Başlat 🚀"):
+   if uploaded_file and st.button("Sihri Başlat 🚀"):
         with st.spinner('Yapay zeka ürününüzü işliyor...'):
             try:
-                # 1. SUPABASE YÜKLEME
+                # 1. SUPABASE ÜZERİNE GEÇİCİ YÜKLEME
                 file_name = f"{int(time.time())}_{uploaded_file.name}"
                 upload_url = f"{SUPABASE_URL}/storage/v1/object/photos/{file_name}"
                 headers = {"Authorization": f"Bearer {SUPABASE_KEY}", "apikey": SUPABASE_KEY, "Content-Type": uploaded_file.type}
+                
                 requests.post(upload_url, data=uploaded_file.getvalue(), headers=headers)
                 image_public_url = f"{SUPABASE_URL}/storage/v1/object/public/photos/{file_name}"
 
-                # 2. FAL.AI FOOOCUS (KESİN PARAMETRE GÜNCELLEMESİ)
+                # 2. FAL.AI FOOOCUS ÇALIŞTIRMA
                 handler = fal_client.submit(
                     "fal-ai/fooocus/image-prompt",
                     arguments={
@@ -69,12 +70,18 @@ with col2:
                     }
                 )
                 
+                # --- İŞTE EKSİK OLAN VE HATAYA SEBEP OLAN SATIR BURASI ---
+                result = handler.get() 
+                
                 if result and 'images' in result:
                     resim_url = result['images'][0]['url']
                     st.image(resim_url, use_container_width=True)
+                    
                     response = requests.get(resim_url)
                     st.download_button("📷 Fotoğrafı İndir", data=response.content, file_name="snap_result.png")
                     st.balloons()
+                else:
+                    st.warning("Yapay zeka görseli oluşturamadı, lütfen tekrar deneyin.")
 
             except Exception as e:
                 st.error(f"Hata oluştu: {e}")
