@@ -28,7 +28,7 @@ with st.sidebar:
         "Stüdyo Karanlık Mod": "dark studio background, dramatic rim lighting, cinematic shadows"
     }
     
-    koruma_seviyesi = st.slider("Ürün Koruma Oranı (Yüksek = Daha Az Değişim)", 0.5, 1.0, 0.85)
+    koruma_seviyesi = st.slider("Ürün Koruma Oranı", 0.5, 1.0, 0.85)
 
 # --- ANA EKRAN ---
 st.title("📸 SnapBackground AI - Profesyonel Reklam Stüdyosu")
@@ -49,24 +49,21 @@ with col2:
     if uploaded_file and st.button("Sihri Başlat 🚀"):
         with st.spinner('Yapay zeka ürününüzü işliyor...'):
             try:
-                # 1. SUPABASE ÜZERİNE GEÇİCİ YÜKLEME
+                # 1. SUPABASE YÜKLEME
                 file_name = f"{int(time.time())}_{uploaded_file.name}"
                 upload_url = f"{SUPABASE_URL}/storage/v1/object/photos/{file_name}"
-                headers = {
-                    "Authorization": f"Bearer {SUPABASE_KEY}", 
-                    "apikey": SUPABASE_KEY, 
-                    "Content-Type": uploaded_file.type
-                }
-                
+                headers = {"Authorization": f"Bearer {SUPABASE_KEY}", "apikey": SUPABASE_KEY, "Content-Type": uploaded_file.type}
                 requests.post(upload_url, data=uploaded_file.getvalue(), headers=headers)
                 image_public_url = f"{SUPABASE_URL}/storage/v1/object/public/photos/{file_name}"
 
-                # 2. FAL.AI FOOOCUS ÇALIŞTIRMA
+                # 2. FAL.AI FOOOCUS (YENİ SÖZLÜK YAPISI)
                 handler = fal_client.submit(
                     "fal-ai/fooocus/image-prompt",
                     arguments={
                         "prompt": f"Professional product photography, {user_prompt}, highly detailed, 8k",
-                        "image_prompt_1": image_public_url,
+                        "image_prompt_1": {
+                            "image_url": image_public_url
+                        },
                         "image_prompt_model_1": "face_swap",
                         "image_prompt_strength": koruma_seviyesi,
                         "negative_prompt": "mutated, deformed, blurry, low quality, distorted, missing parts, unrecognizable product",
@@ -74,18 +71,16 @@ with col2:
                     }
                 )
                 
-                # Sonucu Yapay Zekadan Al
                 result = handler.get() 
                 
                 if result and 'images' in result:
                     resim_url = result['images'][0]['url']
                     st.image(resim_url, use_container_width=True)
-                    
                     response = requests.get(resim_url)
                     st.download_button("📷 Fotoğrafı İndir", data=response.content, file_name="snap_result.png")
                     st.balloons()
                 else:
-                    st.warning("Yapay zeka görseli oluşturamadı, lütfen tekrar deneyin.")
+                    st.warning("Görsel oluşturulamadı.")
 
             except Exception as e:
-                st.error(f"Hata oluştu: {e}")
+                st.error(f"Hata detayı: {e}")
