@@ -5,7 +5,7 @@ import time
 import os
 
 # --- AYARLAR ---
-st.set_page_config(page_title="SnapBackground AI v3.4", layout="wide")
+st.set_page_config(page_title="SnapBackground AI v3.5", layout="wide")
 
 FAL_KEY = "6b6185ff-1f55-41a4-983e-c52708afe67e:3b1962c534d970270346435115182232"
 SUPABASE_URL = "https://ndfavrrmyrmtdixzpome.supabase.co"
@@ -16,12 +16,7 @@ os.environ["FAL_KEY"] = FAL_KEY
 if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "generated_image" not in st.session_state: st.session_state.generated_image = None
 
-# --- VERİTABANI FONKSİYONLARI ---
-def login_user(email, password):
-    url = f"{SUPABASE_URL}/auth/v1/token?grant_type=password"
-    headers = {"apikey": SUPABASE_KEY, "Content-Type": "application/json"}
-    return requests.post(url, headers=headers, json={"email": email, "password": password})
-
+# --- FONKSİYONLAR ---
 def get_credits(user_id):
     headers = {"Authorization": f"Bearer {SUPABASE_KEY}", "apikey": SUPABASE_KEY}
     try:
@@ -35,19 +30,20 @@ def decrease_credit(user_id, current_val):
     requests.patch(f"{SUPABASE_URL}/rest/v1/profiller?id=eq.{user_id}", headers=headers, json={"krediler": new_val})
     return new_val
 
-# --- GİRİŞ ---
+# --- GİRİŞ (Özet Geçiyorum) ---
 if not st.session_state.logged_in:
     st.title("📸 SnapBackground Giriş")
     e = st.text_input("E-posta")
     p = st.text_input("Şifre", type="password")
     if st.button("Giriş Yap"):
-        res = login_user(e, p)
+        url = f"{SUPABASE_URL}/auth/v1/token?grant_type=password"
+        res = requests.post(url, headers={"apikey": SUPABASE_KEY}, json={"email": e, "password": p})
         if res.status_code == 200:
             st.session_state.logged_in = True
             st.session_state.user_id = res.json()['user']['id']
             st.session_state.user_email = e
             st.rerun()
-        else: st.error("Giriş başarısız.")
+        else: st.error("Hatalı giriş.")
     st.stop()
 
 # --- UYGULAMA ---
@@ -55,13 +51,12 @@ user_id = st.session_state.user_id
 current_credits = get_credits(user_id)
 
 with st.sidebar:
-    st.title("👤 Profil")
     st.metric("Kalan Kredi", current_credits)
     if st.button("Çıkış Yap"):
         st.session_state.logged_in = False
         st.rerun()
 
-st.title("📸 SnapBackground AI - Profesyonel Stüdyo")
+st.title("📸 SnapBackground AI - Turbo Mod")
 
 col1, col2 = st.columns(2)
 
@@ -69,42 +64,49 @@ with col1:
     uploaded_file = st.file_uploader("Ürünü yükleyin", type=["jpg", "png", "jpeg"])
     user_prompt = st.text_input("Arka plan tarifi:", "luxury marble table")
     
-    if st.button("Sihri Başlat (1 Kredi) 🚀") and uploaded_file:
+    if st.button("Sihri Başlat 🚀") and uploaded_file:
         if current_credits > 0:
-            with st.spinner("Görsel hazırlanıyor..."):
-                try:
-                    # 1. Resim Yükleme
-                    f_name = f"{int(time.time())}_{uploaded_file.name}"
-                    up_url = f"{SUPABASE_URL}/storage/v1/object/photos/{f_name}"
-                    headers_up = {"Authorization": f"Bearer {SUPABASE_KEY}", "apikey": SUPABASE_KEY, "Content-Type": uploaded_file.type}
-                    requests.post(up_url, data=uploaded_file.getvalue(), headers=headers_up)
-                    p_url = f"{SUPABASE_URL}/storage/v1/object/public/photos/{f_name}"
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
+            try:
+                # 1. Aşama: Resim Yükleme
+                status_text.text("1/3: Ürün fotoğrafı sunucuya yükleniyor...")
+                f_name = f"{int(time.time())}_{uploaded_file.name}"
+                up_url = f"{SUPABASE_URL}/storage/v1/object/photos/{f_name}"
+                headers_up = {"Authorization": f"Bearer {SUPABASE_KEY}", "apikey": SUPABASE_KEY, "Content-Type": uploaded_file.type}
+                requests.post(up_url, data=uploaded_file.getvalue(), headers=headers_up)
+                p_url = f"{SUPABASE_URL}/storage/v1/object/public/photos/{f_name}"
+                progress_bar.progress(33)
 
-                    # 2. AI Çalıştırma
-                    result = fal_client.subscribe(
-                        "fal-ai/fooocus/image-prompt",
-                        arguments={
-                            "prompt": f"Professional product photography, {user_prompt}, 8k",
-                            "image_prompt_1": {"image_url": p_url},
-                            "image_prompt_model_1": "face_swap",
-                            "image_prompt_strength": 0.85
-                        }
-                    )
-                    
-                    if result and 'images' in result:
-                        st.session_state.generated_image = result['images'][0]['url']
-                        decrease_credit(user_id, current_credits)
-                        st.rerun() # Kredinin güncellenmesi için yenile
-                except Exception as e:
-                    st.error(f"Hata: {e}")
+                # 2. Aşama: AI İşleme (Queue Modu)
+                status_text.text("2/3: Yapay zeka arka planı tasarlıyor (Lütfen bekleyin)...")
+                handler = fal_client.submit(
+                    "fal-ai/fooocus/image-prompt",
+                    arguments={
+                        "prompt": f"Professional product photography, {user_prompt}, 8k",
+                        "image_prompt_1": {"image_url": p_url},
+                        "image_prompt_model_1": "face_swap"
+                    }
+                )
+                result = handler.get() # Sonuç gelene kadar burada bekler
+                progress_bar.progress(66)
+
+                # 3. Aşama: Sonuç ve Kredi
+                if result and 'images' in result:
+                    status_text.text("3/3: Tamamlandı! Kredi düşülüyor...")
+                    st.session_state.generated_image = result['images'][0]['url']
+                    decrease_credit(user_id, current_credits)
+                    progress_bar.progress(100)
+                    st.rerun()
+            except Exception as e:
+                st.error(f"Hata oluştu: {e}")
         else:
             st.warning("Krediniz yetersiz!")
 
 with col2:
-    st.subheader("✨ Sonuç")
     if st.session_state.generated_image:
-        st.image(st.session_state.generated_image, use_container_width=True)
-        st.success("Görsel başarıyla oluşturuldu! Sağ tıklayıp kaydedebilirsiniz.")
-        if st.button("Yeni Görsel Oluştur 🔄"):
+        st.image(st.session_state.generated_image, caption="AI Sonucu")
+        if st.button("Yeni Görsel"):
             st.session_state.generated_image = None
             st.rerun()
