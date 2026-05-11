@@ -1,16 +1,18 @@
 import streamlit as st
-import fal_client
 import requests
 import time
-import os
+import base64
+from openai import OpenAI
 
 # --- SİSTEM AYARLARI ---
-st.set_page_config(page_title="Etsy SEO Magic Pro v1.9", layout="wide")
+st.set_page_config(page_title="Etsy SEO Magic Pro v2.0", layout="wide")
 
-FAL_KEY = "6b6185ff-1f55-41a4-983e-c52708afe67e:3b1962c534d970270346435115182232"
+# BU ANAHTARI BURAYA YAPIŞTIR (OpenAI sitesinden aldığın anahtar)
+OPENAI_API_KEY = "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" 
 SUPABASE_URL = "https://ndfavrrmyrmtdixzpome.supabase.co"
 SUPABASE_KEY = "sb_secret_s4P2_-OJol1tGBcXi71IZA_vIp3oTpO"
-os.environ["FAL_KEY"] = FAL_KEY
+
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "seo_data" not in st.session_state: st.session_state.seo_data = None
@@ -29,8 +31,7 @@ def use_credit(user_id, c):
 
 # --- GİRİŞ EKRANI ---
 if not st.session_state.logged_in:
-    st.title("📦 Etsy SEO Magic Pro")
-    st.info("Lütfen mağaza sahibi hesabınızla giriş yapın.")
+    st.title("📦 Etsy SEO Magic Pro (GPT-4o Edition)")
     e = st.text_input("E-posta")
     p = st.text_input("Şifre", type="password")
     if st.button("Sisteme Giriş Yap"):
@@ -38,8 +39,6 @@ if not st.session_state.logged_in:
         if res.status_code == 200:
             st.session_state.logged_in, st.session_state.user_id = True, res.json()['user']['id']
             st.rerun()
-        else:
-            st.error("Giriş başarısız. Bilgilerinizi kontrol edin.")
     st.stop()
 
 # --- ANA KONTROL PANELİ ---
@@ -47,61 +46,57 @@ user_id = st.session_state.user_id
 current_c = get_credits(user_id)
 
 with st.sidebar:
-    st.title("💎 Satıcı Paneli")
+    st.title("💎 PRO Satıcı")
     st.metric("Kalan Kredi", current_c)
     if st.button("Güvenli Çıkış"): 
         st.session_state.logged_in = False
         st.rerun()
 
 st.title("🚀 Etsy SEO & Tanım Uzmanı")
-st.markdown("Ürün fotoğrafını yükleyin; GPT-4o ve Claude destekli sistemimiz SEO paketinizi hazırlasın.")
 
 col1, col2 = st.columns([1, 1.5])
 
 with col1:
-    up = st.file_uploader("Ürün Fotoğrafı (JPG/PNG)", type=["jpg", "png", "jpeg"])
-    lang = st.selectbox("Sonuç Dili", ["English", "Turkish"])
+    up = st.file_uploader("Ürün Fotoğrafı Yükle", type=["jpg", "png", "jpeg"])
+    lang = st.selectbox("Çıktı Dili", ["English", "Turkish"])
     
     if st.button("SEO Analizini Başlat ✨") and up:
         if current_c > 0:
-            with st.spinner("AI dünyasının en iyi vision modellerine bağlanılıyor..."):
+            with st.spinner("GPT-4o Vision ürünü inceliyor..."):
                 try:
-                    # 1. Fotoğrafı Supabase Storage'a Yükle
-                    f_n = f"{int(time.time())}_{up.name}"
-                    h_u = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": up.type}
-                    requests.post(f"{SUPABASE_URL}/storage/v1/object/photos/{f_n}", data=up.getvalue(), headers=h_u)
-                    img_url = f"{SUPABASE_URL}/storage/v1/object/public/photos/{f_n}"
+                    # Fotoğrafı Base64 formatına çevir (OpenAI için en hızlı yol)
+                    base64_image = base64.b64encode(up.getvalue()).decode('utf-8')
 
-                    # 2. OpenRouter Vision API Çağrısı (v1.9 Kesinleşmiş Yol)
-                    result = fal_client.run("fal-ai/openrouter/vision", arguments={
-                        "prompt": f"Act as an Etsy SEO Expert. Analyze this product image. Provide: 1. A catchy high-ranking Title. 2. 13 distinct SEO Tags (comma-separated). 3. A professional description with features/benefits. Language: {lang}",
-                        "image_url": img_url
-                    })
+                    response = client.chat.completions.create(
+                        model="gpt-4o",
+                        messages=[
+                            {
+                                "role": "user",
+                                "content": [
+                                    {"type": "text", "text": f"You are a professional Etsy SEO Expert. Analyze this product and provide: 1. A catchy high-ranking Title. 2. 13 distinct SEO Tags (comma-separated). 3. A professional description. Language: {lang}"},
+                                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
+                                ],
+                            }
+                        ],
+                        max_tokens=1000,
+                    )
 
-                    # 3. Sonuç Yakalama
-                    output = ""
-                    if isinstance(result, dict):
-                        output = result.get('output', {}).get('text') or result.get('text') or result.get('output')
-
+                    output = response.choices[0].message.content
                     if output:
                         st.session_state.seo_data = output
                         use_credit(user_id, current_c)
                         st.rerun()
-                    else:
-                        st.error("Model çalıştı ancak anlamlı bir metin dönmedi.")
-
                 except Exception as ex:
-                    st.error(f"Bağlantı Hatası: {ex}. Lütfen API model ismini kontrol edin.")
+                    st.error(f"OpenAI Hatası: {ex}")
         else:
-            st.warning("İşlem için yeterli krediniz kalmadı.")
+            st.warning("Krediniz kalmadı.")
 
 with col2:
-    st.subheader("📝 Profesyonel SEO Çıktısı")
+    st.subheader("📝 GPT-4o SEO Analizi")
     if st.session_state.seo_data:
-        st.info("Aşağıdaki verileri Etsy mağazanızdaki ilgili alanlara kopyalayıp yapıştırabilirsiniz.")
-        st.text_area("Kopyalamaya Hazır Paket", st.session_state.seo_data, height=550)
-        if st.button("Yeni Ürün Analiz Et 🔄"):
+        st.text_area("Kopyalamaya Hazır Veri", st.session_state.seo_data, height=550)
+        if st.button("Yeni Analiz 🔄"):
             st.session_state.seo_data = None
             st.rerun()
     else:
-        st.info("Fotoğraf yükledikten sonra analiz sonuçları burada görünecek.")
+        st.info("Sonuçlar burada listelenecek.")
