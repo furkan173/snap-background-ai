@@ -24,8 +24,13 @@ def main():
     if "seo_result" not in st.session_state:
         st.session_state.seo_result = None
 
-    user_data = get_user_data("furkangunay733@gmail.com")
-    current_kredi = user_data['krediler']
+    # Kullanıcı verilerini çekme
+    try:
+        user_data = get_user_data("furkangunay733@gmail.com")
+        current_kredi = user_data['krediler']
+    except Exception as e:
+        st.error("Kullanıcı verileri yüklenemedi. Lütfen bağlantılarınızı kontrol edin.")
+        return
 
     # --- SIDEBAR ---
     with st.sidebar:
@@ -52,6 +57,10 @@ def main():
     st.info("Ürün fotoğrafınızı yükleyin, AI sizin için satış arttıran SEO ayarlarını yapsın.")
 
     uploaded_file = st.file_uploader("Ürün Fotoğrafı Yükle", type=["jpg", "jpeg", "png"])
+    
+    # Müşteri Bilgilendirme Notu
+    st.caption("⚠️ **En iyi sonuç için:** Ürününüzün düz bir zeminde, net ve yüksek çözünürlüklü bir fotoğrafını yükleyin. AI, içinde insan yüzü olan veya çok bulanık görselleri güvenlik/kalite nedeniyle reddedebilir.")
+
     lang = st.selectbox("Çıktı Dili", ["English", "Turkish", "German", "French"])
 
     if st.button("SEO Analizini Başlat ✨"):
@@ -64,6 +73,7 @@ def main():
                 try:
                     base64_image = image_to_base64(uploaded_file)
                     
+                    # Optimize edilmiş İngilizce Prompt (Daha kararlı sonuçlar için)
                     prompt_text = f"""
                     You are an Etsy SEO expert. Analyze the product in this image and provide the following in {lang}:
                     
@@ -71,7 +81,7 @@ def main():
                     2. **SEO Tags**: 13 powerful tags separated by commas.
                     3. **Description**: A short, engaging product description focusing on benefits.
                     
-                    Please provide the results directly starting with the Title.
+                    Please provide the results directly starting with the Title. Do not include any conversational filler.
                     """
 
                     response = client.chat.completions.create(
@@ -85,7 +95,7 @@ def main():
                                 ],
                             }
                         ],
-                        max_tokens=500,
+                        max_tokens=600,
                     )
 
                     # Sonucu hafızaya al
@@ -95,20 +105,19 @@ def main():
                     yeni_kredi = current_kredi - 1
                     update_kredi(user_data['id'], yeni_kredi)
                     
-                    # Sayfayı yenile (Kredi bilgisinin güncellenmesi için)
+                    # Başarı balonları ve sayfa yenileme
                     st.balloons()
                     st.rerun()
 
                 except Exception as e:
                     st.error(f"Bir hata oluştu: {e}")
 
-    # --- SONUÇLARI GÖSTERME (Hafızadan çeker) ---
+    # --- SONUÇLARI GÖSTERME ---
     if st.session_state.seo_result:
         st.success("Analiz Başarıyla Tamamlandı!")
         st.markdown("### 📝 GPT-4o SEO Analizi")
         st.text_area("Kopyalamaya Hazır Veri", value=st.session_state.seo_result, height=400)
         
-        # Yeni bir analiz için temizleme butonu (Opsiyonel)
         if st.button("Sonuçları Temizle"):
             st.session_state.seo_result = None
             st.rerun()
