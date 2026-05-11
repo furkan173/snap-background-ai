@@ -65,37 +65,35 @@ with c1:
                 requests.post(f"{SUPABASE_URL}/storage/v1/object/photos/{f_n}", data=up.getvalue(), headers=h_u)
                 img_url = f"{SUPABASE_URL}/storage/v1/object/public/photos/{f_n}"
 
-                # 2. Vision AI Analizi (GÜNCEL STABİL MODEL: fal-ai/llava-next)
-                status.text("2/2: Ürün detayları ve SEO stratejisi hazırlanıyor...")
+                # 2. Vision AI Analizi (HIZLI MODEL: fal-ai/moondream)
+                status.text("2/2: Turbo analiz başlatıldı, saniyeler içinde hazır...")
                 
-                prompt = (
-                    "Act as an Etsy SEO Expert. Analyze the product in this image. "
-                    "Provide 3 things: "
-                    "1. A high-ranking Etsy Title. "
-                    "2. 13 SEO Keywords (comma-separated). "
-                    "3. A professional description in " + language + "."
-                )
+                with st.spinner("Etsy SEO Uzmanı verileri hazırlıyor..."):
+                    result = fal_client.subscribe("fal-ai/moondream/batched", arguments={
+                        "inputs": [
+                            {
+                                "image_url": img_url,
+                                "prompt": f"Act as an Etsy SEO Expert. Look at this product and write: 1. A high-ranking Etsy Title. 2. 13 Tags (comma-separated). 3. A short professional description. Language: {language}"
+                            }
+                        ]
+                    })
 
-                # 'fast-vision' yerine 'llava-next' modelini kullanıyoruz
-                result = fal_client.subscribe("fal-ai/llava-next", arguments={
-                    "image_url": img_url,
-                    "prompt": prompt
-                })
-
-                # Sonuç bazı modellerde 'output' bazı modellerde 'description' olarak gelir
-                output_text = result.get('output') or result.get('description') or "Analiz başarısız oldu."
-
-                if output_text:
-                    st.session_state.seo_output = output_text
-                    use_credit(st.session_state.user_id, current_c)
-                    st.rerun()
+                    # Moondream batched modelinde çıktı listesi döner
+                    if result and 'outputs' in result:
+                        output_text = result['outputs'][0]
+                        st.session_state.seo_output = output_text
+                        use_credit(st.session_state.user_id, current_c)
+                        st.rerun()
+                    else:
+                        st.error("Model cevap vermedi, lütfen tekrar deneyin.")
+                
+               
                 
                 
                 
 
                 
-            except Exception as ex: st.error(f"Hata: {ex}")
-        else: st.warning("Yetersiz kredi.")
+      
 
 with c2:
     st.subheader("📝 SEO Sonuçları")
