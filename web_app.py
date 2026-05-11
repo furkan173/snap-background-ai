@@ -4,7 +4,6 @@ from openai import OpenAI
 from supabase import create_client
 
 # --- AYARLAR VE BAĞLANTILAR ---
-# Not: secrets kısmında 'OPENAI_API_KEY', 'SUPABASE_URL' ve 'SUPABASE_KEY' tanımlı olmalı
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
 
@@ -12,7 +11,6 @@ def image_to_base64(image_file):
     return base64.b64encode(image_file.read()).decode('utf-8')
 
 # --- KULLANICI BİLGİLERİNİ ÇEKME ---
-# Oturum açmış kullanıcının bilgilerini (email üzerinden) çekiyoruz
 def get_user_data(email):
     res = supabase.table("profiller").select("*").eq("e-posta", email).single().execute()
     return res.data
@@ -22,8 +20,10 @@ def update_kredi(user_id, yeni_kredi):
 
 # --- ANA UYGULAMA ---
 def main():
-    # Kullanıcının giriş yaptığını varsayıyorum (senin auth mekanizmana göre burayı bağla)
-    # Örnek: user_email = st.session_state.user_email
+    # Hafızayı ilklendirme (Sonuçların kaybolmaması için)
+    if "seo_result" not in st.session_state:
+        st.session_state.seo_result = None
+
     user_data = get_user_data("furkangunay733@gmail.com")
     current_kredi = user_data['krediler']
 
@@ -37,7 +37,7 @@ def main():
         checkout_url = "https://getsnapbackground.lemonsqueezy.com/checkout/buy/a35adaa5-735c-4ffb-936d-442576c4c753"
         st.markdown(f'''
             <a href="{checkout_url}" target="_blank" style="text-decoration: none;">
-                <div style="background-color: #FF4B4B; color: white; padding: 12 discouraged; border-radius: 8px; text-align: center; font-weight: bold;">
+                <div style="background-color: #FF4B4B; color: white; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold;">
                     🔥 100 Kredi Satın Al
                 </div>
             </a>
@@ -64,15 +64,13 @@ def main():
                 try:
                     base64_image = image_to_base64(uploaded_file)
                     
-                    # --- TEMİZ AI PROMPT'U ---
                     prompt_text = f"""
                     Sen bir Etsy SEO uzmanısın. Fotoğraftaki ürünü analiz et ve {lang} dilinde şunları ver:
                     1. **Title**: Maksimum 140 karakter, anahtar kelime odaklı.
                     2. **SEO Tags**: Virgülle ayrılmış 13 tane güçlü etiket.
                     3. **Description**: Ürünün faydalarına odaklanan kısa ve etkileyici bir açıklama.
                     
-                    ÖNEMLİ: Sadece istenen bilgileri ver. 'Tabii ki', 'İşte sonuçlar' gibi giriş cümleleri kurma. 
-                    Direkt '1. **Title**:' ile başla.
+                    ÖNEMLİ: Sadece istenen bilgileri ver. Giriş cümlesi kurma. Direkt '1. **Title**:' ile başla.
                     """
 
                     response = client.chat.completions.create(
@@ -89,23 +87,30 @@ def main():
                         max_tokens=500,
                     )
 
-                    result = response.choices[0].message.content
+                    # Sonucu hafızaya al
+                    st.session_state.seo_result = response.choices[0].message.content
                     
-                    # Krediyi düşür ve güncelle
+                    # Krediyi düşür
                     yeni_kredi = current_kredi - 1
                     update_kredi(user_data['id'], yeni_kredi)
                     
-                    # Sonucu göster
+                    # Sayfayı yenile (Kredi bilgisinin güncellenmesi için)
                     st.balloons()
-                    st.success("Analiz Başarıyla Tamamlandı!")
-                    st.markdown("### 📝 GPT-4o SEO Analizi")
-                    st.text_area("Kopyalamaya Hazır Veri", value=result, height=400)
-                    
-                    # Kredi bilgisini anlık güncellemek için
                     st.rerun()
 
                 except Exception as e:
                     st.error(f"Bir hata oluştu: {e}")
+
+    # --- SONUÇLARI GÖSTERME (Hafızadan çeker) ---
+    if st.session_state.seo_result:
+        st.success("Analiz Başarıyla Tamamlandı!")
+        st.markdown("### 📝 GPT-4o SEO Analizi")
+        st.text_area("Kopyalamaya Hazır Veri", value=st.session_state.seo_result, height=400)
+        
+        # Yeni bir analiz için temizleme butonu (Opsiyonel)
+        if st.button("Sonuçları Temizle"):
+            st.session_state.seo_result = None
+            st.rerun()
 
 if __name__ == "__main__":
     main()
