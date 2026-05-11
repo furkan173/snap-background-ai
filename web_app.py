@@ -5,7 +5,7 @@ import time
 import os
 
 # --- AYARLAR ---
-st.set_page_config(page_title="Etsy SEO Magic AI v1.2", layout="wide")
+st.set_page_config(page_title="Etsy SEO Magic Pro v1.3", layout="wide")
 
 FAL_KEY = "6b6185ff-1f55-41a4-983e-c52708afe67e:3b1962c534d970270346435115182232"
 SUPABASE_URL = "https://ndfavrrmyrmtdixzpome.supabase.co"
@@ -13,9 +13,9 @@ SUPABASE_KEY = "sb_secret_s4P2_-OJol1tGBcXi71IZA_vIp3oTpO"
 os.environ["FAL_KEY"] = FAL_KEY
 
 if "logged_in" not in st.session_state: st.session_state.logged_in = False
-if "seo_output" not in st.session_state: st.session_state.seo_output = None
+if "seo_data" not in st.session_state: st.session_state.seo_data = None
 
-# --- VERİ TABANI FONKSİYONLARI ---
+# --- VERİ TABANI ---
 def get_credits(user_id):
     h = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
     try:
@@ -27,10 +27,9 @@ def use_credit(user_id, c):
     h = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"}
     requests.patch(f"{SUPABASE_URL}/rest/v1/profiller?id=eq.{user_id}", headers=h, json={"krediler": max(0, c - 1)})
 
-# --- GİRİŞ EKRANI ---
+# --- GİRİŞ ---
 if not st.session_state.logged_in:
-    st.title("📦 Etsy SEO Magic AI")
-    st.info("Lütfen mağaza sahibi girişi yapın.")
+    st.title("📦 Etsy SEO Magic Pro")
     e = st.text_input("E-posta")
     p = st.text_input("Şifre", type="password")
     if st.button("Sisteme Giriş Yap"):
@@ -38,69 +37,68 @@ if not st.session_state.logged_in:
         if res.status_code == 200:
             st.session_state.logged_in, st.session_state.user_id = True, res.json()['user']['id']
             st.rerun()
-        else:
-            st.error("Giriş başarısız. Bilgilerinizi kontrol edin.")
     st.stop()
 
-# --- ANA PANEL ---
+# --- PANEL ---
 user_id = st.session_state.user_id
 current_c = get_credits(user_id)
 
 with st.sidebar:
-    st.title("💎 Satıcı Hesabı")
-    st.metric("Kalan Kredi", current_c)
-    if st.button("Güvenli Çıkış"): 
-        st.session_state.logged_in = False
-        st.rerun()
+    st.title("💎 PRO Satıcı")
+    st.metric("Kredi", current_c)
+    if st.button("Çıkış"): st.session_state.logged_in = False; st.rerun()
 
-st.title("🚀 Etsy SEO & Tanım Oluşturucu")
-st.markdown("Ürün fotoğrafını yükle, AI senin için en iyi SEO başlığını ve etiketlerini hazırlasın.")
+st.title("🚀 Etsy SEO & Tanım Uzmanı")
+st.markdown("Profesyonel e-ticaret analizi için ürün fotoğrafınızı yükleyin.")
 
-c1, c2 = st.columns([1, 1.5])
+col1, col2 = st.columns([1, 1.5])
 
-with c1:
-    up = st.file_uploader("Ürün Fotoğrafını Buraya Bırakın", type=["jpg", "png", "jpeg"])
-    lang = st.selectbox("Sonuç Dili", ["English", "Turkish"])
+with col1:
+    up = st.file_uploader("Ürün Fotoğrafı", type=["jpg", "png", "jpeg"])
+    lang = st.selectbox("Çıktı Dili", ["English", "Turkish"])
     
-    if st.button("SEO Paketini Hazırla ✨") and up:
+    if st.button("SEO Paketini Oluştur ✨") and up:
         if current_c > 0:
-            with st.spinner("AI ürünü inceliyor ve anahtar kelimeleri seçiyor..."):
+            with st.spinner("AI ürün detaylarını, materyalleri ve SEO fırsatlarını analiz ediyor..."):
                 try:
-                    # 1. Dosyayı Supabase'e Yükle
                     f_n = f"{int(time.time())}_{up.name}"
                     h_u = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": up.type}
                     requests.post(f"{SUPABASE_URL}/storage/v1/object/photos/{f_n}", data=up.getvalue(), headers=h_u)
                     img_url = f"{SUPABASE_URL}/storage/v1/object/public/photos/{f_n}"
 
-                    # 2. Moondream ile Vision Analizi
-                    result = fal_client.subscribe("fal-ai/moondream/batched", arguments={
-                        "inputs": [
-                            {
-                                "image_url": img_url,
-                                "prompt": f"Act as an Etsy SEO Expert. Look at this product and provide: 1. A catchy high-ranking Etsy Title. 2. 13 comma-separated Tags. 3. A professional product description with features and benefits. Output Language: {lang}"
-                            }
-                        ]
+                    # ZEKİ MODEL: llava-v1.6
+                    prompt = f"""You are an Etsy SEO Specialist. Analyze the image and provide:
+                    1. TITLE: A long, keyword-rich Etsy title (max 140 chars).
+                    2. TAGS: 13 distinct, unique SEO keywords separated by commas.
+                    3. DESCRIPTION: A professional sales description with bullet points.
+                    Language: {lang}. Do not repeat words like 'eyewear' constantly, use variety."""
+
+                    result = fal_client.subscribe("fal-ai/llava-v1.6", arguments={
+                        "image_url": img_url,
+                        "prompt": prompt
                     })
 
-                    if result and 'outputs' in result:
-                        st.session_state.seo_output = result['outputs'][0]
+                    output = result.get('output') or result.get('description')
+                    if output:
+                        st.session_state.seo_data = output
                         use_credit(user_id, current_c)
                         st.rerun()
-                    else:
-                        st.error("Modelden yanıt alınamadı, lütfen tekrar deneyin.")
-
                 except Exception as ex:
-                    st.error(f"Sistem Hatası: {ex}")
+                    st.error(f"Hata: {ex}")
         else:
-            st.warning("İşlem için yeterli krediniz kalmadı.")
+            st.warning("Krediniz kalmadı.")
 
-with c2:
-    st.subheader("📝 Hazır SEO Verileri")
-    if st.session_state.seo_output:
-        st.text_area("Kopyalamaya Hazır:", st.session_state.seo_output, height=450)
-        st.success("Tebrikler! Veriler Etsy algoritmasına uygun şekilde hazırlandı.")
-        if st.button("Yeni Ürün Analiz Et 🔄"):
-            st.session_state.seo_output = None
+with col2:
+    st.subheader("📝 Analiz Sonuçları")
+    if st.session_state.seo_data:
+        raw_text = st.session_state.seo_data
+        
+        # Profesyonel görünüm için metni parçalara bölmeye çalışalım (eğer format uygunsa)
+        st.info("Aşağıdaki metni kopyalayıp Etsy'deki ilgili alanlara yapıştırabilirsiniz.")
+        st.text_area("SEO Çıktısı", raw_text, height=500)
+        
+        if st.button("Yeni Analiz 🔄"):
+            st.session_state.seo_data = None
             st.rerun()
     else:
-        st.info("Analiz sonuçları burada görünecek.")
+        st.info("Sonuçlar burada detaylı olarak listelenecek.")
