@@ -5,7 +5,7 @@ import time
 import os
 
 # --- AYARLAR ---
-st.set_page_config(page_title="Etsy SEO Magic Pro v1.3", layout="wide")
+st.set_page_config(page_title="Etsy SEO Magic Pro v1.4", layout="wide")
 
 FAL_KEY = "6b6185ff-1f55-41a4-983e-c52708afe67e:3b1962c534d970270346435115182232"
 SUPABASE_URL = "https://ndfavrrmyrmtdixzpome.supabase.co"
@@ -59,46 +59,43 @@ with col1:
     
     if st.button("SEO Paketini Oluştur ✨") and up:
         if current_c > 0:
-            with st.spinner("AI ürün detaylarını, materyalleri ve SEO fırsatlarını analiz ediyor..."):
+            with st.spinner("AI ürün detaylarını ve SEO fırsatlarını analiz ediyor..."):
                 try:
                     f_n = f"{int(time.time())}_{up.name}"
                     h_u = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": up.type}
                     requests.post(f"{SUPABASE_URL}/storage/v1/object/photos/{f_n}", data=up.getvalue(), headers=h_u)
                     img_url = f"{SUPABASE_URL}/storage/v1/object/public/photos/{f_n}"
 
-                    # ZEKİ MODEL: llava-v1.6
-                    prompt = f"""You are an Etsy SEO Specialist. Analyze the image and provide:
-                    1. TITLE: A long, keyword-rich Etsy title (max 140 chars).
-                    2. TAGS: 13 distinct, unique SEO keywords separated by commas.
-                    3. DESCRIPTION: A professional sales description with bullet points.
-                    Language: {lang}. Do not repeat words like 'eyewear' constantly, use variety."""
+                    # GÜNCEL STABİL VISION MODELİ: fuyu-vlm
+                    # Not: Bu model görseli hızlı analiz eder ve açıklayıcıdır.
+                    prompt = f"Act as an Etsy SEO Expert. Detail this product: 1. Etsy Title. 2. 13 Tags. 3. Description. Language: {lang}"
 
-                    result = fal_client.subscribe("fal-ai/llava-v1.6", arguments={
+                    result = fal_client.subscribe("fal-ai/fuyu-vlm", arguments={
                         "image_url": img_url,
                         "prompt": prompt
                     })
 
-                    output = result.get('output') or result.get('description')
+                    # Sonucu almak için en kapsamlı kontrol
+                    output = result.get('output') or result.get('description') or result.get('data')
                     if output:
                         st.session_state.seo_data = output
                         use_credit(user_id, current_c)
                         st.rerun()
+                    else:
+                        st.error("Model çalıştı ama veri dönmedi. Lütfen tekrar deneyin.")
+
                 except Exception as ex:
-                    st.error(f"Hata: {ex}")
+                    st.error(f"Bağlantı Hatası: {ex}")
         else:
             st.warning("Krediniz kalmadı.")
 
 with col2:
     st.subheader("📝 Analiz Sonuçları")
     if st.session_state.seo_data:
-        raw_text = st.session_state.seo_data
-        
-        # Profesyonel görünüm için metni parçalara bölmeye çalışalım (eğer format uygunsa)
-        st.info("Aşağıdaki metni kopyalayıp Etsy'deki ilgili alanlara yapıştırabilirsiniz.")
-        st.text_area("SEO Çıktısı", raw_text, height=500)
-        
+        st.info("Sonuçlar hazır! Kopyalayıp Etsy mağazanızda kullanabilirsiniz.")
+        st.text_area("SEO Paketi", st.session_state.seo_data, height=500)
         if st.button("Yeni Analiz 🔄"):
             st.session_state.seo_data = None
             st.rerun()
     else:
-        st.info("Sonuçlar burada detaylı olarak listelenecek.")
+        st.info("Analiz sonuçları burada detaylı olarak listelenecek.")
