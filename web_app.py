@@ -65,28 +65,35 @@ with c1:
                 requests.post(f"{SUPABASE_URL}/storage/v1/object/photos/{f_n}", data=up.getvalue(), headers=h_u)
                 img_url = f"{SUPABASE_URL}/storage/v1/object/public/photos/{f_n}"
 
-                # 2. Vision AI Analizi (GÜNCEL MODEL: fal-ai/fast-vision)
+                # 2. Vision AI Analizi (GÜNCEL STABİL MODEL: fal-ai/llava-next)
                 status.text("2/2: Ürün detayları ve SEO stratejisi hazırlanıyor...")
                 
                 prompt = (
-                    f"You are an Etsy SEO expert. Analyze this product image and provide: "
-                    f"1. SEO Title: High-ranking title (max 140 chars). "
-                    f"2. 13 Tags: Comma separated keywords for Etsy algorithm. "
-                    f"3. Product Description: Engaging, professional description with bullet points. "
-                    f"Language: {language}."
+                    "Act as an Etsy SEO Expert. Analyze the product in this image. "
+                    "Provide 3 things: "
+                    "1. A high-ranking Etsy Title. "
+                    "2. 13 SEO Keywords (comma-separated). "
+                    "3. A professional description in " + language + "."
                 )
 
-                # Model yolunu en güncel hale getirdik
-                result = fal_client.subscribe("fal-ai/fast-vision", arguments={
+                # 'fast-vision' yerine 'llava-next' modelini kullanıyoruz
+                result = fal_client.subscribe("fal-ai/llava-next", arguments={
                     "image_url": img_url,
                     "prompt": prompt
                 })
 
-                if result and 'output' in result:
-                    # Bazı modellerde sonuç 'output' bazılarında 'data' olarak döner, garantiye alalım
-                    st.session_state.seo_output = result['output']
+                # Sonuç bazı modellerde 'output' bazı modellerde 'description' olarak gelir
+                output_text = result.get('output') or result.get('description') or "Analiz başarısız oldu."
+
+                if output_text:
+                    st.session_state.seo_output = output_text
                     use_credit(st.session_state.user_id, current_c)
                     st.rerun()
+                
+                
+                
+
+                
             except Exception as ex: st.error(f"Hata: {ex}")
         else: st.warning("Yetersiz kredi.")
 
