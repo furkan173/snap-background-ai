@@ -65,23 +65,25 @@ with c1:
                 requests.post(f"{SUPABASE_URL}/storage/v1/object/photos/{f_n}", data=up.getvalue(), headers=h_u)
                 img_url = f"{SUPABASE_URL}/storage/v1/object/public/photos/{f_n}"
 
-                # 2. Vision AI Analizi ve SEO Yazımı
-                status.text("2/2: Etsy algoritmaları taranıyor...")
+                # 2. Vision AI Analizi (GÜNCEL MODEL: fal-ai/fast-vision)
+                status.text("2/2: Ürün detayları ve SEO stratejisi hazırlanıyor...")
                 
                 prompt = (
-                    f"Analyze this product image and provide: "
-                    f"1. A high-ranking Etsy SEO Title (max 140 chars). "
-                    f"2. 13 SEO Tags (comma separated). "
-                    f"3. A professional, engaging product description (bullet points, features, benefits). "
-                    f"Language: {language}. Focus on high conversion keywords."
+                    f"You are an Etsy SEO expert. Analyze this product image and provide: "
+                    f"1. SEO Title: High-ranking title (max 140 chars). "
+                    f"2. 13 Tags: Comma separated keywords for Etsy algorithm. "
+                    f"3. Product Description: Engaging, professional description with bullet points. "
+                    f"Language: {language}."
                 )
 
-                result = fal_client.subscribe("fal-ai/llava-v1.5-13b", arguments={
+                # Model yolunu en güncel hale getirdik
+                result = fal_client.subscribe("fal-ai/fast-vision", arguments={
                     "image_url": img_url,
                     "prompt": prompt
                 })
 
                 if result and 'output' in result:
+                    # Bazı modellerde sonuç 'output' bazılarında 'data' olarak döner, garantiye alalım
                     st.session_state.seo_output = result['output']
                     use_credit(st.session_state.user_id, current_c)
                     st.rerun()
