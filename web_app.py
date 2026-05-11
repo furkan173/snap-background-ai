@@ -7,8 +7,8 @@ from openai import OpenAI
 # --- SİSTEM AYARLARI ---
 st.set_page_config(page_title="Etsy SEO Magic Pro v2.0", layout="wide")
 
-# BU ANAHTARI BURAYA YAPIŞTIR (OpenAI sitesinden aldığın anahtar)
-OPENAI_API_KEY = "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" 
+# OpenAI API anahtarını sistem ayarlarından güvenli şekilde alıyoruz
+OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"] 
 SUPABASE_URL = "https://ndfavrrmyrmtdixzpome.supabase.co"
 SUPABASE_KEY = "sb_secret_s4P2_-OJol1tGBcXi71IZA_vIp3oTpO"
 
