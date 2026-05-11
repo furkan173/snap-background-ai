@@ -24,7 +24,7 @@ def update_kredi(user_id, yeni_kredi):
 def main():
     # Kullanıcının giriş yaptığını varsayıyorum (senin auth mekanizmana göre burayı bağla)
     # Örnek: user_email = st.session_state.user_email
-    user_data = get_user_data("test@email.com") # Burayı dinamik yapmalısın
+    user_data = get_user_data("furkangunay733@gmail.com")
     current_kredi = user_data['krediler']
 
     # --- SIDEBAR ---
