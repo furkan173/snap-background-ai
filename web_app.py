@@ -5,7 +5,7 @@ import time
 import os
 
 # --- AYARLAR ---
-st.set_page_config(page_title="Etsy SEO Magic Pro v1.4", layout="wide")
+st.set_page_config(page_title="Etsy SEO Magic Pro v1.5", layout="wide")
 
 FAL_KEY = "6b6185ff-1f55-41a4-983e-c52708afe67e:3b1962c534d970270346435115182232"
 SUPABASE_URL = "https://ndfavrrmyrmtdixzpome.supabase.co"
@@ -66,26 +66,25 @@ with col1:
                     requests.post(f"{SUPABASE_URL}/storage/v1/object/photos/{f_n}", data=up.getvalue(), headers=h_u)
                     img_url = f"{SUPABASE_URL}/storage/v1/object/public/photos/{f_n}"
 
-                    # GÜNCEL STABİL VISION MODELİ: fuyu-vlm
-                    # Not: Bu model görseli hızlı analiz eder ve açıklayıcıdır.
-                    prompt = f"Act as an Etsy SEO Expert. Detail this product: 1. Etsy Title. 2. 13 Tags. 3. Description. Language: {lang}"
+                    # EN GÜNCEL VE KAPATILMAYACAK MODEL: fal-ai/cogvlm-v1.5
+                    # Bu model Fal.ai'ın amiral gemisidir.
+                    prompt = f"As an Etsy SEO expert, look at this image. Give me a high-ranking TITLE, 13 unique TAGS, and a detailed DESCRIPTION in {lang}."
 
-                    result = fal_client.subscribe("fal-ai/fuyu-vlm", arguments={
+                    result = fal_client.subscribe("fal-ai/cogvlm-v1.5", arguments={
                         "image_url": img_url,
                         "prompt": prompt
                     })
 
-                    # Sonucu almak için en kapsamlı kontrol
                     output = result.get('output') or result.get('description') or result.get('data')
                     if output:
                         st.session_state.seo_data = output
                         use_credit(user_id, current_c)
                         st.rerun()
                     else:
-                        st.error("Model çalıştı ama veri dönmedi. Lütfen tekrar deneyin.")
+                        st.error("Modelden yanıt dönmedi, lütfen tekrar deneyin.")
 
                 except Exception as ex:
-                    st.error(f"Bağlantı Hatası: {ex}")
+                    st.error(f"Sistem Hatası: {ex}. Lütfen Fal.ai model ismini kontrol edin.")
         else:
             st.warning("Krediniz kalmadı.")
 
@@ -98,4 +97,4 @@ with col2:
             st.session_state.seo_data = None
             st.rerun()
     else:
-        st.info("Analiz sonuçları burada detaylı olarak listelenecek.")
+        st.info("Analiz sonuçları burada listelenecek.")
