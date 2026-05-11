@@ -48,6 +48,25 @@ current_c = get_credits(user_id)
 with st.sidebar:
     st.title("💎 PRO Satıcı")
     st.metric("Kalan Kredi", current_c)
+    
+    # --- ÖDEME BÖLÜMÜ ---
+    st.markdown("---")
+    st.subheader("Kredi Yükle")
+    
+    checkout_url = "https://getsnapbackground.lemonsqueezy.com/checkout/buy/a35adaa5-735c-4ffb-936d-442576c4c753"
+    
+    # Şık bir satın al butonu
+    st.markdown(f'''
+        <a href="{checkout_url}" target="_blank" style="text-decoration: none;">
+            <div style="background-color: #FF4B4B; color: white; padding: 15px; border-radius: 10px; text-align: center; font-weight: bold; font-size: 18px; transition: 0.3s; box-shadow: 0px 4px 10px rgba(0,0,0,0.1);">
+                🔥 100 Kredi Satın Al
+            </div>
+        </a>
+    ''', unsafe_allow_html=True)
+    
+    st.markdown("<p style='text-align: center; font-size: 12px; color: gray; margin-top: 10px;'>Güvenli ödeme Lemon Squeezy ile sağlanmaktadır.</p>", unsafe_allow_html=True)
+    st.markdown("---")
+    
     if st.button("Güvenli Çıkış"): 
         st.session_state.logged_in = False
         st.rerun()
