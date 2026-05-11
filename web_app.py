@@ -5,7 +5,7 @@ import time
 import os
 
 # --- AYARLAR ---
-st.set_page_config(page_title="Etsy SEO Magic Pro v1.6", layout="wide")
+st.set_page_config(page_title="Etsy SEO Magic Pro v1.8", layout="wide")
 
 FAL_KEY = "6b6185ff-1f55-41a4-983e-c52708afe67e:3b1962c534d970270346435115182232"
 SUPABASE_URL = "https://ndfavrrmyrmtdixzpome.supabase.co"
@@ -32,7 +32,7 @@ if not st.session_state.logged_in:
     st.title("📦 Etsy SEO Magic Pro")
     e = st.text_input("E-posta")
     p = st.text_input("Şifre", type="password")
-    if st.button("Sisteme Giriş Yap"):
+    if st.button("Giriş Yap"):
         res = requests.post(f"{SUPABASE_URL}/auth/v1/token?grant_type=password", headers={"apikey": SUPABASE_KEY}, json={"email": e, "password": p})
         if res.status_code == 200:
             st.session_state.logged_in, st.session_state.user_id = True, res.json()['user']['id']
@@ -58,37 +58,37 @@ with col1:
     
     if st.button("SEO Paketini Oluştur ✨") and up:
         if current_c > 0:
-            with st.spinner("AI ürün detaylarını analiz ediyor..."):
+            with st.spinner("OpenRouter üzerinden en iyi AI modeli bağlanıyor..."):
                 try:
                     f_n = f"{int(time.time())}_{up.name}"
                     h_u = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": up.type}
                     requests.post(f"{SUPABASE_URL}/storage/v1/object/photos/{f_n}", data=up.getvalue(), headers=h_u)
                     img_url = f"{SUPABASE_URL}/storage/v1/object/public/photos/{f_n}"
 
-                    # BU SEFER MOONDREAM MODELİNİN EN STABİL VERSİYONUNU KULLANIYORUZ
-                    # Eğer bu da hata verirse Fal.ai panelindeki model adını manuel kontrol etmeliyiz.
-                    result = fal_client.subscribe("fal-ai/moondream", arguments={
-                        "image_url": img_url,
-                        "prompt": f"Act as an Etsy SEO expert. Write a Title, 13 tags, and a description for this product in {lang}. Be detailed."
+                    # EKRAN GÖRÜNTÜSÜNDEKİ MODEL: openrouter/router/vision
+                    # Bu model GPT-4o veya Claude 3 gibi en iyileri kullanır.
+                    result = fal_client.subscribe("fal-ai/openrouter/router/vision", arguments={
+                        "prompt": f"Act as an Etsy SEO Expert. Analyze the image and provide: 1. A catchy title. 2. 13 tags. 3. Detailed description. Output Language: {lang}",
+                        "image_url": img_url
                     })
 
-                    output = result.get('description') or result.get('output') or result.get('data')
+                    output = result.get('output') or result.get('description') or result.get('data')
                     if output:
                         st.session_state.seo_data = output
                         use_credit(user_id, current_c)
                         st.rerun()
                     else:
-                        st.error("Veri alınamadı, model yapısı değişmiş olabilir.")
+                        st.error("AI modeli yanıt üretti ancak veri formatı okunamadı.")
 
                 except Exception as ex:
-                    st.error(f"Sistem Hatası: {ex}. Lütfen API sağlayıcısının model ismini (fal-ai/moondream) kontrol edin.")
+                    st.error(f"Bağlantı Hatası: {ex}")
         else:
             st.warning("Krediniz kalmadı.")
 
 with col2:
     st.subheader("📝 Analiz Sonuçları")
     if st.session_state.seo_data:
-        st.text_area("SEO Paketi", st.session_state.seo_data, height=500)
+        st.text_area("Kopyalanabilir Veri", st.session_state.seo_data, height=500)
         if st.button("Yeni Analiz 🔄"):
             st.session_state.seo_data = None
             st.rerun()
