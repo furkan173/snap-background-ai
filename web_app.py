@@ -65,12 +65,13 @@ def main():
                     base64_image = image_to_base64(uploaded_file)
                     
                     prompt_text = f"""
-                    Sen bir Etsy SEO uzmanısın. Fotoğraftaki ürünü analiz et ve {lang} dilinde şunları ver:
-                    1. **Title**: Maksimum 140 karakter, anahtar kelime odaklı.
-                    2. **SEO Tags**: Virgülle ayrılmış 13 tane güçlü etiket.
-                    3. **Description**: Ürünün faydalarına odaklanan kısa ve etkileyici bir açıklama.
+                    You are an Etsy SEO expert. Analyze the product in this image and provide the following in {lang}:
                     
-                    ÖNEMLİ: Sadece istenen bilgileri ver. Giriş cümlesi kurma. Direkt '1. **Title**:' ile başla.
+                    1. **Title**: A high-converting title (max 140 chars).
+                    2. **SEO Tags**: 13 powerful tags separated by commas.
+                    3. **Description**: A short, engaging product description focusing on benefits.
+                    
+                    Please provide the results directly starting with the Title.
                     """
 
                     response = client.chat.completions.create(
