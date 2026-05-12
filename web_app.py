@@ -7,15 +7,25 @@ from supabase import create_client
 # --- CONFIGURATION ---
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
-USER_EMAIL = "furkangunay733@gmail.com"
 
 # --- HELPER FUNCTIONS ---
 def image_to_base64(image_file):
     return base64.b64encode(image_file.read()).decode('utf-8')
 
-def get_user_data(email):
-    res = supabase.table("profiller").select("*").eq("e-posta", email).single().execute()
-    return res.data
+def get_or_create_user(email):
+    # Kullanıcıyı ara
+    res = supabase.table("profiller").select("*").eq("e-posta", email).execute()
+    
+    if len(res.data) > 0:
+        return res.data[0]
+    else:
+        # Yeni kullanıcı oluştur (5 Hoşgeldin Kredisi ile)
+        new_user = {
+            "e-posta": email,
+            "krediler": 5
+        }
+        ins_res = supabase.table("profiller").insert(new_user).execute()
+        return ins_res.data[0]
 
 def update_kredi(user_id, yeni_kredi):
     supabase.table("profiller").update({"krediler": yeni_kredi}).eq("id", user_id).execute()
@@ -33,7 +43,6 @@ def save_to_history(email, tip, girdi, sonuc):
 
 # --- LANDING PAGE ---
 def render_landing_page():
-    # Logo Kontrolü ve Başlık
     if os.path.exists("etsy.jpg"):
         st.image("etsy.jpg", width=250)
     else:
@@ -46,22 +55,16 @@ def render_landing_page():
         </div>
     """, unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown("### ✨ AI SEO")
-        st.write("Generate high-converting titles, tags, and descriptions using GPT-4o.")
-    with col2:
-        st.markdown("### 🔍 Competitor Spy")
-        st.write("Analyze competitor listings and find their strategic weaknesses.")
-    with col3:
-        st.markdown("### 📊 Health Score")
-        st.write("Get instant AI feedback on your listing's SEO health and tips.")
-
-    st.markdown("---")
+    # Giriş Kutusu
+    email_input = st.text_input("Enter your email to start", placeholder="example@email.com")
     
     if st.button("🚀 Get Started / Open Dashboard", use_container_width=True, type="primary"):
-        st.session_state.show_app = True
-        st.rerun()
+        if email_input and "@" in email_input:
+            st.session_state.user_email = email_input.lower().strip()
+            st.session_state.show_app = True
+            st.rerun()
+        else:
+            st.error("Please enter a valid email address.")
 
 # --- MAIN APP ---
 def main():
@@ -71,11 +74,16 @@ def main():
     if not st.session_state.show_app:
         render_landing_page()
     else:
+        # OTURUM AÇAN KULLANICIYI AL
         try:
-            user_data = get_user_data(USER_EMAIL)
+            user_data = get_or_create_user(st.session_state.user_email)
             current_kredi = user_data['krediler']
+            USER_EMAIL = st.session_state.user_email
         except Exception as e:
-            st.error(f"Profile connection error: {e}")
+            st.error(f"Authentication error: {e}")
+            if st.button("Back to Home"):
+                st.session_state.show_app = False
+                st.rerun()
             return
 
         # --- SIDEBAR ---
@@ -83,6 +91,7 @@ def main():
             if os.path.exists("etsy.jpg"):
                 st.image("etsy.jpg", width=150)
             st.title("💎 EtsyFocus PRO")
+            st.write(f"Logged in as: **{USER_EMAIL}**")
             st.metric("Credits Remaining", current_kredi)
             st.markdown("---")
             st.subheader("Upgrade")
@@ -90,6 +99,7 @@ def main():
             st.markdown(f'<a href="{checkout_url}" target="_blank" style="text-decoration:none;"><div style="background-color:#FF4B4B;color:white;padding:12px;border-radius:8px;text-align:center;font-weight:bold;">🔥 Get 100 Credits</div></a>', unsafe_allow_html=True)
             if st.button("Logout"):
                 st.session_state.show_app = False
+                st.session_state.user_email = None
                 st.rerun()
 
         st.title("🚀 Global Etsy Marketing Suite")
@@ -115,7 +125,7 @@ def main():
                         update_kredi(user_data['id'], current_kredi - 1)
                         st.balloons()
                 else:
-                    st.warning("Please upload a photo or check credits.")
+                    st.warning("Insufficient credits or no photo.")
 
         # --- TAB 2: COMPETITOR ANALYSIS ---
         with tab2:
@@ -135,8 +145,6 @@ def main():
                         st.write(res_text)
                         save_to_history(USER_EMAIL, "Competitor Analysis", comp_file.name, res_text)
                         update_kredi(user_data['id'], current_kredi - 1)
-                else:
-                    st.warning("Check image or credits.")
 
         # --- TAB 3: LISTING SCORE ---
         with tab3:
@@ -155,13 +163,12 @@ def main():
                         st.write(res_text)
                         save_to_history(USER_EMAIL, "Listing Score", u_title[:30], res_text)
                         update_kredi(user_data['id'], current_kredi - 1)
-                else:
-                    st.warning("Fill title and check credits.")
 
         # --- TAB 4: HISTORY ---
         with tab4:
             st.header("Your Recent Activity")
             try:
+                # Sadece giriş yapan kullanıcının geçmişini getir
                 history_res = supabase.table("analiz_gecmisi").select("*").eq("user_email", USER_EMAIL).order("olusturma_tarihi", desc=True).limit(15).execute()
                 if history_res.data:
                     for item in history_res.data:
