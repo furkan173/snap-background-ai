@@ -1,5 +1,6 @@
 import streamlit as st
 import base64
+import os
 from openai import OpenAI
 from supabase import create_client
 
@@ -32,11 +33,12 @@ def save_to_history(email, tip, girdi, sonuc):
 
 # --- LANDING PAGE ---
 def render_landing_page():
-    # Logo ve Başlık
-    col_l, col_r = st.columns([1, 2])
-    with col_l:
-        st.image("etsy.jpg", width=200)
-    
+    # Logo Kontrolü ve Başlık
+    if os.path.exists("etsy.jpg"):
+        st.image("etsy.jpg", width=250)
+    else:
+        st.title("💎 EtsyFocus PRO")
+
     st.markdown("""
         <div style="text-align: center; padding: 20px 0px;">
             <h1 style="font-size: 3.2rem; color: #FF4B4B;">Skyrocket Your Etsy Sales</h1>
@@ -44,7 +46,6 @@ def render_landing_page():
         </div>
     """, unsafe_allow_html=True)
 
-    # Özellikler Paneli
     col1, col2, col3 = st.columns(3)
     with col1:
         st.markdown("### ✨ AI SEO")
@@ -58,21 +59,18 @@ def render_landing_page():
 
     st.markdown("---")
     
-    # Giriş Butonu
     if st.button("🚀 Get Started / Open Dashboard", use_container_width=True, type="primary"):
         st.session_state.show_app = True
         st.rerun()
 
 # --- MAIN APP ---
 def main():
-    # Sayfa durumu kontrolü
     if 'show_app' not in st.session_state:
         st.session_state.show_app = False
 
     if not st.session_state.show_app:
         render_landing_page()
     else:
-        # ASIL UYGULAMA PANELİ
         try:
             user_data = get_user_data(USER_EMAIL)
             current_kredi = user_data['krediler']
@@ -82,7 +80,8 @@ def main():
 
         # --- SIDEBAR ---
         with st.sidebar:
-            st.image("etsy.jpg", width=150)
+            if os.path.exists("etsy.jpg"):
+                st.image("etsy.jpg", width=150)
             st.title("💎 EtsyFocus PRO")
             st.metric("Credits Remaining", current_kredi)
             st.markdown("---")
@@ -94,7 +93,6 @@ def main():
                 st.rerun()
 
         st.title("🚀 Global Etsy Marketing Suite")
-        
         tab1, tab2, tab3, tab4 = st.tabs(["✨ SEO Generator", "🔍 Competitor Analysis", "📊 Listing Score", "📜 History"])
 
         # --- TAB 1: SEO GENERATOR ---
@@ -102,7 +100,6 @@ def main():
             st.header("AI SEO Optimizer")
             uploaded_file = st.file_uploader("Upload Product Photo", type=["jpg", "png"], key="seo_up")
             lang = st.selectbox("Language", ["English", "German", "French", "Turkish"], key="seo_lang")
-            
             if st.button("Generate Strategy ✨"):
                 if uploaded_file and current_kredi > 0:
                     with st.spinner("Analyzing image..."):
@@ -114,7 +111,6 @@ def main():
                         )
                         res_text = response.choices[0].message.content
                         st.write(res_text)
-                        
                         save_to_history(USER_EMAIL, "SEO Generator", uploaded_file.name, res_text)
                         update_kredi(user_data['id'], current_kredi - 1)
                         st.balloons()
@@ -125,7 +121,6 @@ def main():
         with tab2:
             st.header("Spy on Competitors")
             comp_file = st.file_uploader("Upload Competitor Image", type=["jpg", "png"], key="comp_up")
-            
             if st.button("Analyze Competitor 🔍"):
                 if comp_file and current_kredi > 0:
                     with st.spinner("Decoding competitor..."):
@@ -138,7 +133,6 @@ def main():
                         res_text = response.choices[0].message.content
                         st.markdown("### 🏆 Strategic Insights")
                         st.write(res_text)
-                        
                         save_to_history(USER_EMAIL, "Competitor Analysis", comp_file.name, res_text)
                         update_kredi(user_data['id'], current_kredi - 1)
                 else:
@@ -149,7 +143,6 @@ def main():
             st.header("Listing Health Check")
             u_title = st.text_input("Current Title")
             u_tags = st.text_area("Current Tags")
-            
             if st.button("Get Score 📊"):
                 if u_title and current_kredi > 0:
                     with st.spinner("Auditing..."):
@@ -160,7 +153,6 @@ def main():
                         )
                         res_text = response.choices[0].message.content
                         st.write(res_text)
-                        
                         save_to_history(USER_EMAIL, "Listing Score", u_title[:30], res_text)
                         update_kredi(user_data['id'], current_kredi - 1)
                 else:
