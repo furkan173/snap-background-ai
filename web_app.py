@@ -123,17 +123,28 @@ def main():
             else:
                 st.warning("Fill title or check credits!")
 
-    # --- TAB 4: HISTORY (GEÇMİŞ) ---
-    with tab4:
-        st.header("Your Recent Activity")
-        history_res = supabase.table("analiz_gecmisi").select("*").eq("user_email", USER_EMAIL).order("olusturma_tarihi", desc=True).limit(10).execute()
+    # --- TAB 4: HISTORY (GEÇMİŞ) GÜNCEL KOD ---
+with tab4:
+    st.header("Your Recent Activity")
+    
+    # Verileri çekiyoruz
+    try:
+        history_res = supabase.table("analiz_gecmisi")\
+            .select("*")\
+            .eq("user_email", USER_EMAIL)\
+            .order("olusturma_tarihi", desc=True)\
+            .limit(20)\
+            .execute()
         
-        if history_res.data:
+        if history_res.data and len(history_res.data) > 0:
             for item in history_res.data:
-                with st.expander(f"🕒 {item['olusturma_tarihi'][:16]} - {item['analiz_tipi']} ({item['girdi_verisi']})"):
-                    st.markdown(item['sonuc_metni'])
+                # Başlık kısmına tarih ve analiz tipini yazıyoruz
+                tarih = item['olusturma_tarihi'][:16].replace("T", " ")
+                with st.expander(f"🕒 {tarih} - {item['analiz_tipi']}"):
+                    st.info(f"**Input:** {item['girdi_verisi']}")
+                    st.markdown(f"**Result:**\n\n{item['sonuc_metni']}")
+                    st.divider()
         else:
-            st.info("No history found yet. Start analyzing to see results here!")
-
-if __name__ == "__main__":
-    main()
+            st.info("Henüz geçmiş verisi bulunamadı. Bir analiz yaparak başlayın!")
+    except Exception as e:
+        st.error(f"History listeleme hatası: {e}")
