@@ -124,7 +124,7 @@ def main():
                 st.warning("Fill title or check credits!")
 
     # --- TAB 4: HISTORY (GEÇMİŞ) GÜNCEL KOD ---
-with tab4:
+    with tab4:
     st.header("Your Recent Activity")
     
     # Verileri çekiyoruz
