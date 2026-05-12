@@ -13,19 +13,28 @@ def image_to_base64(image_file):
     return base64.b64encode(image_file.read()).decode('utf-8')
 
 def get_or_create_user(email):
-    # Kullanıcıyı ara
+    # Kullanıcıyı e-posta ile ara
     res = supabase.table("profiller").select("*").eq("e-posta", email).execute()
     
     if len(res.data) > 0:
         return res.data[0]
     else:
-        # Yeni kullanıcı oluştur (5 Hoşgeldin Kredisi ile)
-        new_user = {
-            "e-posta": email,
-            "krediler": 5
-        }
-        ins_res = supabase.table("profiller").insert(new_user).execute()
-        return ins_res.data[0]
+        # YENİ KULLANICI OLUŞTURMA: 
+        # id sütununu boş bırakıyoruz, veritabanı otomatik atayacak.
+        try:
+            new_user = {
+                "e-posta": email,
+                "krediler": 5  # Hoşgeldin kredisi
+            }
+            ins_res = supabase.table("profiller").insert(new_user).execute()
+            
+            if ins_res.data:
+                return ins_res.data[0]
+            else:
+                return None
+        except Exception as e:
+            st.error(f"Registration Error: {e}")
+            return None
 
 def update_kredi(user_id, yeni_kredi):
     supabase.table("profiller").update({"krediler": yeni_kredi}).eq("id", user_id).execute()
@@ -77,13 +86,15 @@ def main():
         # OTURUM AÇAN KULLANICIYI AL
         try:
             user_data = get_or_create_user(st.session_state.user_email)
-            current_kredi = user_data['krediler']
-            USER_EMAIL = st.session_state.user_email
+            if user_data:
+                current_kredi = user_data['krediler']
+                user_db_id = user_data['id']
+                USER_EMAIL = st.session_state.user_email
+            else:
+                st.error("Account could not be created.")
+                return
         except Exception as e:
             st.error(f"Authentication error: {e}")
-            if st.button("Back to Home"):
-                st.session_state.show_app = False
-                st.rerun()
             return
 
         # --- SIDEBAR ---
@@ -122,7 +133,7 @@ def main():
                         res_text = response.choices[0].message.content
                         st.write(res_text)
                         save_to_history(USER_EMAIL, "SEO Generator", uploaded_file.name, res_text)
-                        update_kredi(user_data['id'], current_kredi - 1)
+                        update_kredi(user_db_id, current_kredi - 1)
                         st.balloons()
                 else:
                     st.warning("Insufficient credits or no photo.")
@@ -144,7 +155,7 @@ def main():
                         st.markdown("### 🏆 Strategic Insights")
                         st.write(res_text)
                         save_to_history(USER_EMAIL, "Competitor Analysis", comp_file.name, res_text)
-                        update_kredi(user_data['id'], current_kredi - 1)
+                        update_kredi(user_db_id, current_kredi - 1)
 
         # --- TAB 3: LISTING SCORE ---
         with tab3:
@@ -162,13 +173,12 @@ def main():
                         res_text = response.choices[0].message.content
                         st.write(res_text)
                         save_to_history(USER_EMAIL, "Listing Score", u_title[:30], res_text)
-                        update_kredi(user_data['id'], current_kredi - 1)
+                        update_kredi(user_db_id, current_kredi - 1)
 
         # --- TAB 4: HISTORY ---
         with tab4:
             st.header("Your Recent Activity")
             try:
-                # Sadece giriş yapan kullanıcının geçmişini getir
                 history_res = supabase.table("analiz_gecmisi").select("*").eq("user_email", USER_EMAIL).order("olusturma_tarihi", desc=True).limit(15).execute()
                 if history_res.data:
                     for item in history_res.data:
