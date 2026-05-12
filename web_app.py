@@ -18,14 +18,16 @@ def get_user_data(email):
 def update_kredi(user_id, yeni_kredi):
     supabase.table("profiller").update({"krediler": yeni_kredi}).eq("id", user_id).execute()
 
-# --- NEW: Save to History ---
 def save_to_history(email, tip, girdi, sonuc):
-    supabase.table("analiz_gecmisi").insert({
-        "user_email": email,
-        "analiz_tipi": tip,
-        "girdi_verisi": girdi,
-        "sonuc_metni": sonuc
-    }).execute()
+    try:
+        supabase.table("analiz_gecmisi").insert({
+            "user_email": str(email),
+            "analiz_tipi": str(tip),
+            "girdi_verisi": str(girdi),
+            "sonuc_metni": str(sonuc)
+        }).execute()
+    except Exception as e:
+        st.error(f"History Save Error: {e}")
 
 # --- MAIN APP ---
 def main():
