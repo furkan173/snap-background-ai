@@ -123,28 +123,32 @@ def main():
             else:
                 st.warning("Fill title or check credits!")
 
-    # --- TAB 4: HISTORY (GEÇMİŞ) GÜNCEL KOD ---
+    # --- TAB 4: HISTORY (GEÇMİŞ) ---
     with tab4:
-    st.header("Your Recent Activity")
-    
-    # Verileri çekiyoruz
-    try:
-        history_res = supabase.table("analiz_gecmisi")\
-            .select("*")\
-            .eq("user_email", USER_EMAIL)\
-            .order("olusturma_tarihi", desc=True)\
-            .limit(20)\
-            .execute()
+        st.header("Your Recent Activity")
         
-        if history_res.data and len(history_res.data) > 0:
-            for item in history_res.data:
-                # Başlık kısmına tarih ve analiz tipini yazıyoruz
-                tarih = item['olusturma_tarihi'][:16].replace("T", " ")
-                with st.expander(f"🕒 {tarih} - {item['analiz_tipi']}"):
-                    st.info(f"**Input:** {item['girdi_verisi']}")
-                    st.markdown(f"**Result:**\n\n{item['sonuc_metni']}")
-                    st.divider()
-        else:
-            st.info("Henüz geçmiş verisi bulunamadı. Bir analiz yaparak başlayın!")
-    except Exception as e:
-        st.error(f"History listeleme hatası: {e}")
+        try:
+            # USER_EMAIL değişkeninin yukarıda tanımlandığından emin ol
+            history_res = supabase.table("analiz_gecmisi")\
+                .select("*")\
+                .eq("user_email", USER_EMAIL)\
+                .order("olusturma_tarihi", desc=True)\
+                .limit(20)\
+                .execute()
+            
+            if history_res.data and len(history_res.data) > 0:
+                for item in history_res.data:
+                    # Tarihi daha okunabilir yapalım
+                    tarih_ham = item['olusturma_tarihi']
+                    tarih_format = tarih_ham[:16].replace("T", " ")
+                    
+                    with st.expander(f"🕒 {tarih_format} - {item['analiz_tipi']}"):
+                        st.info(f"**Input:** {item['girdi_verisi']}")
+                        st.markdown(f"**Result:**")
+                        st.write(item['sonuc_metni'])
+                        st.divider()
+            else:
+                st.info("No history found yet. Start by generating SEO or analyzing a competitor!")
+                
+        except Exception as e:
+            st.error(f"Error loading history: {e}")
